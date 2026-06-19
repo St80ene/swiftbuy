@@ -21,22 +21,22 @@ export class ProductsService {
       await product.save();
       return product;
     } catch (error) {
-      console.error('Error creating product:', error);
       throw new InternalServerErrorException('Failed to create product');
     }
   }
 
-  async findAll({
-    page = 1,
-    limit = 10,
-  }): Promise<ApiResponse<{ products: Product[]; total: number }>> {
+  async findAll({ page, limit }: { page?: number; limit?: number }) {
     try {
-      const pageNumber = page || 1;
-      const skip = (pageNumber - 1) * limit;
+      // Force clean number conversion safely
+      const pageNumber = Math.max(1, page || 1);
+      const limitNumber = Math.max(1, limit || 10);
+
+      // Perform your math on verified numbers
+      const skip = (pageNumber - 1) * limitNumber;
 
       const [products, total] = await Product.findAndCount({
-        take: limit,
-        skip,
+        take: limitNumber,
+        skip: skip,
       });
 
       return successResponse('Products retrieved successfully', {

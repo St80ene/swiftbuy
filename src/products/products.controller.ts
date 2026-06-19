@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   Query,
+  DefaultValuePipe,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -22,7 +23,10 @@ export class ProductsController {
   }
 
   @Get()
-  findAll(@Query('page') page: number, @Query('limit') limit: number) {
+  findAll(
+    @Query('page', new DefaultValuePipe(1)) page: number,
+    @Query('limit', new DefaultValuePipe(10)) limit: number,
+  ) {
     return this.productsService.findAll({ page, limit });
   }
 
