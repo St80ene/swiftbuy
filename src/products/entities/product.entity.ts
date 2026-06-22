@@ -25,13 +25,18 @@ export class Product extends BaseEntity {
   @Column({ nullable: true })
   description!: string;
 
+  @Column({ nullable: true, default: '' })
+  image_url!: string;
+
+  @Column({ nullable: true, default: 0 })
+  stock_quantity!: number;
+
   @Column('decimal', { precision: 10, scale: 2 })
   price!: number;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, default: '' })
   category!: string;
 
-  // Automatically sets the timestamp when a row is first inserted
   @CreateDateColumn({
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP(6)',
