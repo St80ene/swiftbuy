@@ -38,16 +38,16 @@ export class Product extends BaseEntity {
   category!: string;
 
   @CreateDateColumn({
-    type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP(6)',
+    type: 'datetime',
+    default: () => 'CURRENT_TIMESTAMP',
   })
   createdAt!: Date;
 
   // Automatically updates the timestamp every time the row is modified
   @UpdateDateColumn({
-    type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP(6)',
-    onUpdate: 'CURRENT_TIMESTAMP(6)',
+    type: 'datetime',
+    default: () => 'CURRENT_TIMESTAMP',
+    onUpdate: 'CURRENT_TIMESTAMP',
   })
   updatedAt!: Date;
 }
