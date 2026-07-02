@@ -10,7 +10,7 @@ import {
   ApiResponse,
   errorResponse,
   successResponse,
-} from 'src/utils/response.utils';
+} from '../utils/response.utils';
 
 @Injectable()
 export class ProductsService {
