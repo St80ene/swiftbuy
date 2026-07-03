@@ -47,8 +47,8 @@ Many businesses still manage inventory using notebooks, spreadsheets, or WhatsAp
 ### Backend
 * **NestJS**
 * **TypeScript**
-* **PostgreSQL**
-* **Prisma ORM**
+* **MySQL**
+* **TypeORM**
 
 ### Authentication
 * JWT Authentication
