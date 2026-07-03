@@ -57,10 +57,18 @@ export class CreateProduct1783029197042 implements MigrationInterface {
           {
             name: 'createdAt',
             type: 'datetime',
+            default: 'CURRENT_TIMESTAMP',
           },
           {
             name: 'updatedAt',
             type: 'datetime',
+            default: 'CURRENT_TIMESTAMP',
+          },
+          {
+            name: 'deletedAt',
+            type: 'datetime',
+            isNullable: true,
+            default: null,
           },
         ],
       }),

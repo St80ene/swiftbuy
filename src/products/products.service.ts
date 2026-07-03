@@ -6,58 +6,87 @@ import {
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Product } from './entities/product.entity';
-import {
-  ApiResponse,
-  errorResponse,
-  successResponse,
-} from '../utils/response.utils';
+import { ApiResponse, successResponse } from '../utils/response.utils';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class ProductsService {
-  constructor() {}
-  async create(createProductDto: CreateProductDto): Promise<Product> {
+  constructor(
+    @InjectRepository(Product)
+    private readonly productRepository: Repository<Product>,
+  ) {}
+
+  async create(
+    createProductDto: CreateProductDto,
+  ): Promise<ApiResponse<Product>> {
     try {
-      const product = new Product(createProductDto);
-      await product.save();
-      return product;
+      const product = this.productRepository.create(createProductDto);
+      const savedProduct = await this.productRepository.save(product);
+      return successResponse('Product created successfully', savedProduct);
     } catch (error) {
-      throw new InternalServerErrorException('Failed to create product');
+      throw new InternalServerErrorException(
+        'Failed to create product. Please try again.',
+      );
     }
   }
 
-  async findAll({ page, limit }: { page?: number; limit?: number }) {
+  async findAll({
+    page,
+    limit,
+  }: {
+    page?: number;
+    limit?: number;
+  }): Promise<ApiResponse<{ products: Product[]; meta: any }>> {
     try {
-      // Force clean number conversion safely
-      const pageNumber = Math.max(1, page || 1);
-      const limitNumber = Math.max(1, limit || 10);
-
-      // Perform your math on verified numbers
+      const pageNumber = Math.max(1, Number(page) || 1);
+      const limitNumber = Math.max(1, Number(limit) || 10);
       const skip = (pageNumber - 1) * limitNumber;
 
-      const [products, total] = await Product.findAndCount({
+      const [products, totalItems] = await this.productRepository.findAndCount({
         take: limitNumber,
         skip: skip,
+        order: { createdAt: 'DESC' }, // Standard production practice: newest first
       });
+
+      const totalPages = Math.ceil(totalItems / limitNumber);
 
       return successResponse('Products retrieved successfully', {
         products,
-        total,
+        meta: {
+          totalItems,
+          itemCount: products.length,
+          itemsPerPage: limitNumber,
+          totalPages,
+          currentPage: pageNumber,
+          hasNextPage: pageNumber < totalPages,
+          hasPreviousPage: pageNumber > 1,
+        },
       });
     } catch (error) {
-      throw new InternalServerErrorException('Error fetching products');
+      console.error('Error fetching products:', error);
+      throw new InternalServerErrorException(
+        'Error fetching products collection.',
+      );
     }
   }
 
   async findOne(id: string): Promise<ApiResponse<Product>> {
     try {
-      const product = await Product.findOne({ where: { id } });
+      const product = await this.productRepository.findOne({ where: { id } });
+
       if (!product) {
-        throw new NotFoundException(errorResponse('product not found'));
+        throw new NotFoundException(
+          `Product with ID "${id}" could not be found.`,
+        );
       }
+
       return successResponse('Product retrieved successfully', product);
     } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      console.error(`Error fetching product ${id}:`, error);
       throw new InternalServerErrorException(
-        errorResponse('Error fetching product', error),
+        'An error occurred while retrieving the product.',
       );
     }
   }
@@ -65,38 +94,48 @@ export class ProductsService {
   async update(
     id: string,
     updateProductDto: UpdateProductDto,
-  ): Promise<Product> {
+  ): Promise<ApiResponse<Product>> {
     try {
-      const product = await Product.findOne({ where: { id } });
+      const product = await this.productRepository.findOne({ where: { id } });
 
       if (!product) {
         throw new NotFoundException(
-          `The requested product could not be found.`,
+          `Product with ID "${id}" could not be found.`,
         );
       }
 
-      Object.assign(product, updateProductDto);
-      await product.save();
-      return product;
+      // Merge the partial updates directly into the fetched entity
+      this.productRepository.merge(product, updateProductDto);
+      const updatedProduct = await this.productRepository.save(product);
+
+      return successResponse('Product updated successfully', updatedProduct);
     } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      console.error(`Error updating product ${id}:`, error);
       throw new InternalServerErrorException(
-        errorResponse('Error updating product', error),
+        'Failed to update product details.',
       );
     }
   }
 
   async remove(id: string): Promise<ApiResponse<null>> {
     try {
-      const product = await Product.findOne({ where: { id } });
+      const product = await this.productRepository.findOne({ where: { id } });
+
       if (!product) {
-        throw new NotFoundException(`Product with ID "${id}" not found`);
+        throw new NotFoundException(
+          `Product with ID "${id}" could not be found.`,
+        );
       }
-      await product.remove();
+
+      // Production practice: Soft delete to preserve historical integrity
+      await this.productRepository.softRemove(product);
+
       return successResponse('Product removed successfully', null);
     } catch (error) {
-      throw new InternalServerErrorException(
-        errorResponse('Error removing product', error),
-      );
+      if (error instanceof NotFoundException) throw error;
+      console.error(`Error deleting product ${id}:`, error);
+      throw new InternalServerErrorException('Failed to remove product.');
     }
   }
 }

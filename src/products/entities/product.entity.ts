@@ -2,6 +2,7 @@ import {
   BaseEntity,
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -20,22 +21,22 @@ export class Product extends BaseEntity {
   id!: string;
 
   @Column()
-  name!: string;
+  name: string;
 
   @Column({ nullable: true })
-  description!: string;
+  description: string;
 
   @Column({ nullable: true, default: '' })
-  image_url!: string;
+  image_url: string;
 
   @Column({ nullable: true, default: 0 })
-  stock_quantity!: number;
+  stock_quantity: number;
 
   @Column('decimal', { precision: 10, scale: 2 })
-  price!: number;
+  price: number;
 
   @Column({ nullable: true, default: '' })
-  category!: string;
+  category: string;
 
   @CreateDateColumn({
     type: 'datetime',
@@ -43,11 +44,17 @@ export class Product extends BaseEntity {
   })
   createdAt!: Date;
 
-  // Automatically updates the timestamp every time the row is modified
   @UpdateDateColumn({
     type: 'datetime',
     default: () => 'CURRENT_TIMESTAMP',
     onUpdate: 'CURRENT_TIMESTAMP',
   })
   updatedAt!: Date;
+
+  @DeleteDateColumn({
+    type: 'datetime',
+    default: () => 'CURRENT_TIMESTAMP',
+    nullable: true,
+  })
+  deletedAt!: Date | null;
 }
