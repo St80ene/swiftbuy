@@ -9,19 +9,36 @@ import { Product } from './entities/product.entity';
 import { ApiResponse, successResponse } from '../utils/response.utils';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { CloudinaryService } from '../utils/helpers/cloudinary.service';
 
 @Injectable()
 export class ProductsService {
   constructor(
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   async create(
     createProductDto: CreateProductDto,
+    file?: Express.Multer.File,
   ): Promise<ApiResponse<Product>> {
     try {
-      const product = this.productRepository.create(createProductDto);
+      let finalImageUrl = '';
+
+      // 3. If an image file was uploaded, send it to Cloudinary first
+      if (file) {
+        finalImageUrl = await this.cloudinaryService.uploadImage(
+          file,
+          'products',
+        );
+      }
+
+      const product = this.productRepository.create({
+        ...createProductDto,
+        image: finalImageUrl || createProductDto.image,
+      });
+
       const savedProduct = await this.productRepository.save(product);
       return successResponse('Product created successfully', savedProduct);
     } catch (error) {
@@ -94,6 +111,7 @@ export class ProductsService {
   async update(
     id: string,
     updateProductDto: UpdateProductDto,
+    file?: Express.Multer.File, // 👈 Accept the optional file
   ): Promise<ApiResponse<Product>> {
     try {
       const product = await this.productRepository.findOne({ where: { id } });
@@ -104,9 +122,31 @@ export class ProductsService {
         );
       }
 
+      let oldImageUrl = '';
+
+      // If a new image file is uploaded
+      if (file) {
+        // Keep track of the old image URL so we can delete it later
+        oldImageUrl = product.image_url;
+
+        // Upload the new image to Cloudinary
+        const newImageUrl = await this.cloudinaryService.uploadImage(
+          file,
+          'products',
+        );
+
+        // Inject the new image URL into the DTO wrapper before merging
+        updateProductDto.image_url = newImageUrl;
+      }
+
       // Merge the partial updates directly into the fetched entity
       this.productRepository.merge(product, updateProductDto);
       const updatedProduct = await this.productRepository.save(product);
+
+      // Clean up: If the DB update succeeded and we have an old image, delete it from Cloudinary
+      if (oldImageUrl) {
+        await this.cloudinaryService.deleteImage(oldImageUrl);
+      }
 
       return successResponse('Product updated successfully', updatedProduct);
     } catch (error) {

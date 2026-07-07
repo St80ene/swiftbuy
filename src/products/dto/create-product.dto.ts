@@ -1,39 +1,38 @@
-// products/dto/create-product.dto.ts
+// src/products/dto/create-product.dto.ts
 import {
-  IsString,
   IsNotEmpty,
-  IsOptional,
   IsNumber,
+  IsOptional,
+  IsString,
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateProductDto {
   @IsString()
-  @IsNotEmpty()
-  name!: string;
+  @IsNotEmpty({ message: 'Product name is required.' })
+  name: string;
 
   @IsString()
   @IsOptional()
   description?: string;
 
-  @IsString()
-  @IsOptional()
-  image_url?: string;
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01, { message: 'Price must be greater than 0.' })
+  @Type(() => Number) // Form-data passes everything as strings; this safely forces it to a number
+  price: number;
 
-  @Type(() => Number) // Converts form-data string "45" to number 45
   @IsNumber()
-  @IsOptional()
   @Min(0)
+  @IsOptional()
+  @Type(() => Number) // Safely transforms string numeric inputs from form-data fields
   stock_quantity?: number;
-
-  @Type(() => Number) // Converts form-data string "89.99" to number 89.99
-  @IsNumber()
-  @IsNotEmpty()
-  @Min(0)
-  price!: number;
 
   @IsString()
   @IsOptional()
   category?: string;
+
+  @IsString()
+  @IsOptional()
+  image_url?: string; // 👈 Populated by your service layer AFTER Cloudinary finishes
 }
