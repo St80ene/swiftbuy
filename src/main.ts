@@ -3,9 +3,13 @@ import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { createLoggerConfig } from './common/logger/logger.config';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: createLoggerConfig(),
+  }); // Use the dynamic logger configuration
   // Retrieve ConfigService instance
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT') || 3000;
@@ -34,6 +38,8 @@ async function bootstrap() {
       transform: true, // Auto-transforms strings to numbers/booleans based on DTO types
     }),
   );
+
+  app.useGlobalFilters(new GlobalExceptionFilter());
 
   await app.listen(port);
 }

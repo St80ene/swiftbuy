@@ -3,7 +3,6 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 import * as dotenv from 'dotenv';
 
-// Load .env for the CLI context
 dotenv.config();
 
 @Injectable()
