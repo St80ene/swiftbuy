@@ -46,38 +46,6 @@ export class ProductsController {
     return this.productsService.create(createProductDto, file);
   }
 
-
-  @Get()
-  findAll(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-  ) {
-    return this.productsService.findAll({ page, limit });
-  }
-
-  @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    // <-- Ensures it's a valid UUID structure
-    return this.productsService.findOne(id);
-  }
-
-  @Patch(':id')
-  @UseInterceptors(FileInterceptor('image'))
-  update(
-    @Param('id') id: string,
-    @Body() updateProductDto: UpdateProductDto,
-    @UploadedFile() file?: Express.Multer.File, // 👈 Capture the optional new file
-  ) {
-    return this.productsService.update(id, updateProductDto, file);
-  }
-
-  @Delete(':id')
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    // <-- Ensures it's a valid UUID structure
-    return this.productsService.remove(id);
-  }
-}
-
   @Get()
   findAll(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,

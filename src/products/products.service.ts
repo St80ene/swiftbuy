@@ -36,7 +36,7 @@ export class ProductsService {
 
       const product = this.productRepository.create({
         ...createProductDto,
-        image: finalImageUrl || createProductDto.image,
+        image_url: finalImageUrl || createProductDto?.image_url,
       });
 
       const savedProduct = await this.productRepository.save(product);
