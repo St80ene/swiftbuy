@@ -35,7 +35,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const exceptionResponse =
-      exception instanceof HttpException ? exception.getResponse() : null;
+      exception instanceof HttpException
+        ? (exception.getResponse() as NestHttpExceptionResponse | string)
+        : null;
 
     const rawMessage =
       exception instanceof HttpException
@@ -47,10 +49,11 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const message = Array.isArray(rawMessage) ? rawMessage[0] : rawMessage;
 
     const errorCode =
-      exception instanceof HttpException
-        ? typeof exceptionResponse === 'object' && exceptionResponse !== null
-          ? exceptionResponse.errorCode || 'ERR_BAD_REQUEST'
-          : 'ERR_INTERNAL_SERVER'
+      exception instanceof HttpException && exceptionResponse
+        ? typeof exceptionResponse === 'string'
+          ? 'ERR_INTERNAL_SERVER'
+          : (exceptionResponse as NestHttpExceptionResponse).errorCode ||
+            'ERR_BAD_REQUEST'
         : 'ERR_UNEXPECTED_SYSTEM_FAILURE';
 
     // 1. Telemetry Logging (To CloudWatch, Datadog, or Loki)

@@ -1,9 +1,5 @@
 // src/data-source.ts
 import { DataSource, DataSourceOptions } from 'typeorm';
-import * as dotenv from 'dotenv';
-
-// Load .env for the CLI context
-dotenv.config();
 
 export const dataSourceOptions: DataSourceOptions = {
   type: 'mysql',
