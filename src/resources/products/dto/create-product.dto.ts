@@ -32,8 +32,19 @@ export class CreateProductDto {
   @IsNumber()
   @Min(0)
   @IsOptional()
-  @Type(() => Number) // Safely transforms string numeric inputs from form-data fields
+  @Type(() => Number)
   stock_quantity?: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  @Type(() => Number)
+  is_low_stock!: number;
+
+  @IsNumber()
+  @Min(5)
+  @Type(() => Number)
+  reorder_level!: number;
 
   @IsString()
   @IsOptional()

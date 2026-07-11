@@ -47,6 +47,12 @@ export class Product extends BaseEntity {
   @Column({ type: 'varchar', nullable: true, default: '' })
   category?: string;
 
+  @Column({ type: 'tinyint', default: 0 })
+  is_low_stock!: boolean;
+
+  @Column({ type: 'int', default: 5 })
+  reorder_level!: number;
+
   @CreateDateColumn({
     type: 'datetime',
     default: () => 'CURRENT_TIMESTAMP',
