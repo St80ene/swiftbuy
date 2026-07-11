@@ -1,13 +1,15 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ProductsModule } from './products/products.module';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { dataSourceOptions } from './appDataSource';
+import { dataSourceOptions } from './database/config/appDataSource';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-
+import { CompaniesModule } from './resources/companies/companies.module';
+import { StockModule } from './resources/stocks/stock.module';
+import { UsersModule } from './resources/users/users.module';
+import { ProductsModule } from './resources/products/products.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -24,6 +26,9 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
       autoLoadEntities: true,
     }),
     ProductsModule,
+    CompaniesModule,
+    UsersModule,
+    StockModule,
   ],
   controllers: [AppController],
   providers: [

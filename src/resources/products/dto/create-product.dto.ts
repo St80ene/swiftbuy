@@ -4,6 +4,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsArray,
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -11,7 +12,7 @@ import { Type } from 'class-transformer';
 export class CreateProductDto {
   @IsString()
   @IsNotEmpty({ message: 'Product name is required.' })
-  name: string;
+  name!: string;
 
   @IsString()
   @IsOptional()
@@ -20,19 +21,37 @@ export class CreateProductDto {
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0.01, { message: 'Price must be greater than 0.' })
   @Type(() => Number) // Form-data passes everything as strings; this safely forces it to a number
-  price: number;
+  selling_price!: number;
+
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.0)
+  @IsOptional()
+  @Type(() => Number) // cost_price to match the schema for profit margins
+  cost_price?: number;
 
   @IsNumber()
   @Min(0)
   @IsOptional()
-  @Type(() => Number) // Safely transforms string numeric inputs from form-data fields
+  @Type(() => Number)
   stock_quantity?: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  @Type(() => Number)
+  is_low_stock!: number;
+
+  @IsNumber()
+  @Min(5)
+  @Type(() => Number)
+  reorder_level!: number;
 
   @IsString()
   @IsOptional()
   category?: string;
 
-  @IsString()
+  @IsArray()
+  @IsString({ each: true })
   @IsOptional()
-  image_url?: string; // 👈 Populated by your service layer AFTER Cloudinary finishes
+  images?: string[];
 }

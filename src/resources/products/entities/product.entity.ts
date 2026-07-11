@@ -8,6 +8,12 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+export interface ProductImage {
+  url: string;
+  publicId: string;
+  isPrimary: boolean;
+}
+
 @Entity({ name: 'products' })
 export class Product extends BaseEntity {
   constructor(props?: Partial<Product>) {
@@ -21,22 +27,31 @@ export class Product extends BaseEntity {
   id!: string;
 
   @Column()
-  name: string;
+  name!: string;
 
-  @Column({ nullable: true })
-  description: string;
+  @Column({ type: 'varchar', nullable: true })
+  description?: string;
 
-  @Column({ nullable: true, default: '' })
-  image_url: string;
+  @Column({ type: 'json', default: () => "('[]')" })
+  images!: ProductImage[];
 
-  @Column({ nullable: true, default: 0 })
-  stock_quantity: number;
+  @Column({ type: 'int', default: 0 })
+  stock_quantity!: number;
+
+  @Column('decimal', { precision: 10, scale: 2, default: 0.0 })
+  cost_price!: number;
 
   @Column('decimal', { precision: 10, scale: 2 })
-  price: number;
+  selling_price!: number;
 
-  @Column({ nullable: true, default: '' })
-  category: string;
+  @Column({ type: 'varchar', nullable: true, default: '' })
+  category?: string;
+
+  @Column({ type: 'tinyint', default: 0 })
+  is_low_stock!: boolean;
+
+  @Column({ type: 'int', default: 5 })
+  reorder_level!: number;
 
   @CreateDateColumn({
     type: 'datetime',
@@ -53,7 +68,6 @@ export class Product extends BaseEntity {
 
   @DeleteDateColumn({
     type: 'datetime',
-    default: () => 'CURRENT_TIMESTAMP',
     nullable: true,
   })
   deletedAt!: Date | null;

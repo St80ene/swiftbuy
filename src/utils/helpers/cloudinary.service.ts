@@ -1,62 +1,80 @@
-// src/shared/cloudinary.service.ts
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
-import * as dotenv from 'dotenv';
+import { v2 as cloudinary } from 'cloudinary';
+import * as path from 'path';
+import { ProductImage } from '../../products/entities/product.entity';
 
-dotenv.config();
+interface CloudinaryDestroyResponse {
+  result: 'ok' | 'not_found' | (string & {});
+}
 
 @Injectable()
 export class CloudinaryService {
-  constructor() {
-    // Initialize Cloudinary with your environment variables
-    cloudinary.config({
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET,
-    });
-  }
-
-  async uploadImage(
+  async uploadProductImage(
     file: Express.Multer.File,
-    folderName: string,
-  ): Promise<string> {
+    companyId: string,
+    folderName: string = 'products',
+  ): Promise<ProductImage> {
     if (!file) {
       throw new BadRequestException('No file provided for upload.');
     }
 
+    const sanitizedCompany = companyId
+      .toLowerCase()
+      .replace(/[^a-z0-9-_]/g, '-');
+    const sanitizedFolder = folderName
+      .toLowerCase()
+      .replace(/[^a-z0-9-_]/g, '-');
+    const originalNameWithoutExt = path.parse(file.originalname).name;
+    const sanitizedFileName = originalNameWithoutExt
+      .toLowerCase()
+      .replace(/[^a-z0-9-_]/g, '-');
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e4)}`;
+
+    const targetFolderPath = `${sanitizedCompany}/${sanitizedFolder}`;
+    const customPublicId = `${sanitizedFileName}-${uniqueSuffix}`;
+
     return new Promise((resolve, reject) => {
-      // Use upload_stream to push the memory buffer directly to the cloud
       const uploadStream = cloudinary.uploader.upload_stream(
         {
-          folder: folderName, // Organizes your assets (e.g., 'products')
+          folder: targetFolderPath,
+          public_id: customPublicId,
           resource_type: 'image',
           allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+          use_filename: true,
+          unique_filename: false,
         },
-        (error, result: UploadApiResponse) => {
-          if (error) return reject(error);
-          resolve(result.secure_url); // Returns the permanent secure HTTPS string link
+        (error, result) => {
+          const apiResponse = result;
+          if (error)
+            return reject(
+              new Error(`Cloudinary upload error: ${error.message}`),
+            );
+          if (!apiResponse)
+            return reject(new Error('Cloudinary response empty.'));
+
+          resolve({
+            url: apiResponse.secure_url,
+            publicId: apiResponse.public_id,
+            isPrimary: true,
+          });
         },
       );
 
-      // Write the file buffer to the stream
       uploadStream.end(file.buffer);
     });
   }
 
-  async deleteImage(imageUrl: string): Promise<void> {
-    if (!imageUrl) return;
-
+  async deleteImage(publicId: string): Promise<boolean> {
     try {
-      // Extract the public ID from the Cloudinary URL
-      // Example: https://res.cloudinary.com/cloud/image/upload/v12345/products/abc.jpg -> products/abc
-      const URLParts = imageUrl.split('/');
-      const folderAndFileName = URLParts.slice(-2).join('/').split('.')[0];
+      // 2. Await the response and explicitly cast it from 'any' to our strict interface
+      const response = (await cloudinary.uploader.destroy(
+        publicId,
+      )) as CloudinaryDestroyResponse;
 
-      await cloudinary.uploader.destroy(folderAndFileName);
-    } catch (error) {
-      console.error('Failed to delete old image from Cloudinary:', error);
-      // We don't throw the error here so that a failed image deletion
-      // doesn't crash the entire product database update process.
+      // 3. Now this is fully safe, and ESLint will not complain!
+      return response.result === 'ok';
+    } catch {
+      return false;
     }
   }
 }
