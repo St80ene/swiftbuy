@@ -5,10 +5,13 @@ import {
 } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { Product, ProductImage } from './entities/product.entity';
+import { Product } from './entities/product.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
-import { CloudinaryService } from '../../utils/helpers/cloudinary.service';
+import {
+  CloudinaryService,
+  CloudinaryImage,
+} from '../../utils/helpers/cloudinary.service';
 import { ApiResponse, successResponse } from '../../utils/response.utils';
 import {
   MutationReason,
@@ -37,9 +40,8 @@ export class ProductsService {
     await queryRunner.startTransaction();
 
     try {
-      const productImages: ProductImage[] = [];
+      const productImages: CloudinaryImage[] = [];
 
-      // 1. Single-tenant asset upload tracking directly to a flat products folder
       if (file) {
         const uploadedAsset = await this.cloudinaryService.uploadProductImage(
           file,
@@ -56,6 +58,7 @@ export class ProductsService {
         ...createProductDto,
         images: productImages,
         stock_quantity: initialStock,
+        is_low_stock: initialStock <= createProductDto.reorder_level,
       });
 
       const savedProduct = await queryRunner.manager.save(Product, product);
@@ -101,7 +104,6 @@ export class ProductsService {
       const limitNumber = Math.max(1, Number(limit) || 10);
       const skip = (pageNumber - 1) * limitNumber;
 
-      // FIXED: Removed company_id filter restriction scope boundary
       const [products, totalItems] = await this.productRepository.findAndCount({
         take: limitNumber,
         skip: skip,

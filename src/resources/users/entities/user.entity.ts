@@ -1,4 +1,3 @@
-// src/users/entities/user.entity.ts
 import {
   BaseEntity,
   Column,
@@ -7,6 +6,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Exclude } from 'class-transformer';
 
 export enum UserRole {
   ADMIN = 'ADMIN',
@@ -35,7 +35,8 @@ export class User extends BaseEntity {
   @Column({ type: 'varchar', length: 150, unique: true })
   email!: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255, select: false })
+  @Exclude()
   password!: string;
 
   @Column({

@@ -1,10 +1,15 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { v2 as cloudinary } from 'cloudinary';
 import * as path from 'path';
-import { ProductImage } from '../../products/entities/product.entity';
 
 interface CloudinaryDestroyResponse {
   result: 'ok' | 'not_found' | (string & {});
+}
+
+export interface CloudinaryImage {
+  url: string;
+  publicId: string;
+  isPrimary?: boolean;
 }
 
 @Injectable()
@@ -13,7 +18,7 @@ export class CloudinaryService {
     file: Express.Multer.File,
     companyId: string,
     folderName: string = 'products',
-  ): Promise<ProductImage> {
+  ): Promise<CloudinaryImage> {
     if (!file) {
       throw new BadRequestException('No file provided for upload.');
     }

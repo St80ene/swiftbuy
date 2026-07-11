@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from './entities/user.entity';
+import { User, UserRole } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
@@ -25,28 +25,30 @@ export class UsersService {
    */
   async create(createUserDto: CreateUserDto): Promise<ApiResponse<User>> {
     // Check unique constraint directly on email for the entire system
-    const exists = await this.userRepository.findOne({
-      where: { email: createUserDto.email },
-    });
-    if (exists) {
-      throw new ConflictException('Email already registered.');
-    }
 
     try {
-      const hashedPassword = await bcrypt.hash(
-        createUserDto.password || 'Password123!',
-        10,
-      );
+      const exists = await this.userRepository.findOne({
+        where: { email: createUserDto.email },
+      });
+      if (exists) {
+        throw new ConflictException('Email already registered.');
+      }
+
+      const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
 
       const user = this.userRepository.create({
         ...createUserDto,
         password: hashedPassword,
+        role: createUserDto.role as UserRole, // Default role if not provided
       });
 
       const saved = await this.userRepository.save(user);
       delete (saved as any).password;
 
-      return successResponse('User added successfully', saved);
+      return successResponse(
+        'User added successfully',
+        Array.isArray(saved) ? saved[0] : saved,
+      );
     } catch (error) {
       console.error('Error creating user:', error);
       throw new InternalServerErrorException('Failed to create user record.');
@@ -56,13 +58,40 @@ export class UsersService {
   /**
    * ─── FIND ALL ───
    */
-  async findAll(): Promise<ApiResponse<User[]>> {
-    const users = await this.userRepository.find({
-      order: { createdAt: 'DESC' },
-    });
+  async findAll({
+    page,
+    limit,
+  }: {
+    page?: number;
+    limit?: number;
+  }): Promise<ApiResponse<{ users: User[]; meta: any }>> {
+    try {
+      const pageNumber = Math.max(1, Number(page) || 1);
+      const limitNumber = Math.max(1, Number(limit) || 10);
+      const skip = (pageNumber - 1) * limitNumber;
 
-    users.forEach((u) => delete (u as any).password);
-    return successResponse('Users listed successfully', users);
+      const [users, totalItems] = await this.userRepository.findAndCount({
+        take: limitNumber,
+        skip: skip,
+        order: { createdAt: 'DESC' },
+      });
+
+      return successResponse('Users listed successfully', {
+        users,
+        meta: {
+          totalItems,
+          itemCount: users.length,
+          itemsPerPage: limitNumber,
+          totalPages: Math.ceil(totalItems / limitNumber),
+          currentPage: pageNumber,
+          hasNextPage: pageNumber < Math.ceil(totalItems / limitNumber),
+          hasPreviousPage: pageNumber > 1,
+        },
+      });
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      throw new InternalServerErrorException('Failed to fetch users.');
+    }
   }
 
   /**
@@ -75,9 +104,11 @@ export class UsersService {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) throw new NotFoundException('User record not found.');
 
-    this.userRepository.merge(user, updateUserDto);
+    this.userRepository.merge(user, {
+      ...updateUserDto,
+      role: updateUserDto.role as UserRole,
+    });
     const updated = await this.userRepository.save(user);
-    delete (updated as any).password;
 
     return successResponse('User updated successfully', updated);
   }
@@ -86,10 +117,15 @@ export class UsersService {
    * ─── REMOVE USER ───
    */
   async remove(id: string): Promise<ApiResponse<null>> {
-    const user = await this.userRepository.findOne({ where: { id } });
-    if (!user) throw new NotFoundException('User record not found.');
+    try {
+      const user = await this.userRepository.findOne({ where: { id } });
+      if (!user) throw new NotFoundException('User record not found.');
 
-    await this.userRepository.remove(user);
-    return successResponse('User deleted successfully', null);
+      await this.userRepository.softRemove(user);
+      return successResponse('User deleted successfully', null);
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      throw new InternalServerErrorException('Failed to delete user.');
+    }
   }
 }
