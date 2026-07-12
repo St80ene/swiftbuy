@@ -8,6 +8,25 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { CloudinaryImage } from '../../../utils/helpers/cloudinary/cloudinary.service';
+import { IsEnum } from 'class-validator';
+
+export enum UomType {
+  UNIT = 'UNIT',
+  WEIGHT = 'WEIGHT',
+  VOLUME = 'VOLUME',
+}
+
+export enum UomBaseName {
+  PCS = 'pcs',
+  G = 'g',
+  ML = 'ml',
+}
+
+export enum UomDisplayName {
+  PCS = 'pcs',
+  KG = 'kg',
+  L = 'L',
+}
 
 @Entity({ name: 'products' })
 export class Product extends BaseEntity {
@@ -47,6 +66,24 @@ export class Product extends BaseEntity {
 
   @Column({ type: 'int', default: 5 })
   reorder_level!: number;
+
+  @IsEnum(UomType, {
+    message: 'Invalid UOM type. Must be one of: UNIT, WEIGHT, VOLUME.',
+  })
+  @Column({ type: 'varchar', length: 20, default: 'UNIT' })
+  uom_type!: UomType; // 'UNIT', 'WEIGHT', 'VOLUME'
+
+  @IsEnum(UomBaseName, {
+    message: 'Invalid UOM base name. Must be one of: pcs, g, ml.',
+  })
+  @Column({ type: 'varchar', length: 10, default: 'pcs' })
+  uom_base_name!: UomBaseName; // 'pcs', 'g', 'ml'
+
+  @IsEnum(UomDisplayName, {
+    message: 'Invalid UOM display name. Must be one of: pcs, kg, L.',
+  })
+  @Column({ type: 'varchar', length: 10, default: 'pcs' })
+  uom_display_name!: UomDisplayName; // 'pcs', 'kg', 'L'
 
   @CreateDateColumn({
     type: 'datetime',

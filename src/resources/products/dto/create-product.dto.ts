@@ -50,4 +50,17 @@ export class CreateProductDto {
   @IsString({ each: true })
   @IsOptional()
   images?: string[];
+
+  // Unit of Measure (UOM) fields
+  @IsString()
+  @IsOptional()
+  uom_type?: string; // 'UNIT', 'WEIGHT', 'VOLUME'
+
+  @IsString()
+  @IsOptional()
+  uom_base_name?: string; // 'pcs', 'g', 'ml'
+
+  @IsString()
+  @IsOptional()
+  uom_display_name?: string; // 'pcs', 'kg', 'L'
 }
