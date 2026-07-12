@@ -7,7 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { CloudinaryImage } from '../../../utils/helpers/cloudinary.service';
+import { CloudinaryImage } from '../../../utils/helpers/cloudinary/cloudinary.service';
 
 @Entity({ name: 'products' })
 export class Product extends BaseEntity {

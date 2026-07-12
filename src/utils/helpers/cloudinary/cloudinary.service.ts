@@ -16,16 +16,12 @@ export interface CloudinaryImage {
 export class CloudinaryService {
   async uploadProductImage(
     file: Express.Multer.File,
-    companyId: string,
     folderName: string = 'products',
   ): Promise<CloudinaryImage> {
     if (!file) {
       throw new BadRequestException('No file provided for upload.');
     }
 
-    const sanitizedCompany = companyId
-      .toLowerCase()
-      .replace(/[^a-z0-9-_]/g, '-');
     const sanitizedFolder = folderName
       .toLowerCase()
       .replace(/[^a-z0-9-_]/g, '-');
@@ -35,7 +31,7 @@ export class CloudinaryService {
       .replace(/[^a-z0-9-_]/g, '-');
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e4)}`;
 
-    const targetFolderPath = `${sanitizedCompany}/${sanitizedFolder}`;
+    const targetFolderPath = `${sanitizedFolder}`;
     const customPublicId = `${sanitizedFileName}-${uniqueSuffix}`;
 
     return new Promise((resolve, reject) => {
