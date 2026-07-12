@@ -5,10 +5,13 @@ import {
 } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { Product, ProductImage } from './entities/product.entity';
+import { Product } from './entities/product.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
-import { CloudinaryService } from '../../utils/helpers/cloudinary.service';
+import {
+  CloudinaryService,
+  CloudinaryImage,
+} from '../../utils/helpers/cloudinary/cloudinary.service';
 import { ApiResponse, successResponse } from '../../utils/response.utils';
 import {
   MutationReason,
@@ -30,37 +33,38 @@ export class ProductsService {
    */
   async create(
     createProductDto: CreateProductDto,
-    file?: Express.Multer.File,
+    files?: Express.Multer.File[], // ◄ Expect an array
   ): Promise<ApiResponse<Product>> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      const productImages: ProductImage[] = [];
+      let productImages: CloudinaryImage[] = [];
 
-      // 1. Single-tenant asset upload tracking directly to a flat products folder
-      if (file) {
-        const uploadedAsset = await this.cloudinaryService.uploadProductImage(
-          file,
-          'products',
+      // Loop and upload all images concurrently if files exist
+      if (files && files.length > 0) {
+        const uploadPromises = files.map((file) =>
+          this.cloudinaryService.uploadProductImage(file, 'products'),
         );
-
-        productImages.push(uploadedAsset);
+        productImages = await Promise.all(uploadPromises);
       }
+
+      console.log('Uploaded product images:', productImages);
 
       const initialStock = Number(createProductDto.stock_quantity) || 0;
 
       // 2. Build the core product record
       const product = queryRunner.manager.create(Product, {
         ...createProductDto,
-        images: productImages,
+        images: productImages, // ◄ Saves the JSON array of Cloudinary assets
         stock_quantity: initialStock,
+        is_low_stock: initialStock <= (createProductDto.reorder_level || 5),
       });
 
       const savedProduct = await queryRunner.manager.save(Product, product);
 
-      // 3. Ledger Allocation: Write initial stock inventory trace logs
+      // 3. Ledger Allocation
       if (initialStock > 0) {
         const mutation = queryRunner.manager.create(Stocks, {
           product_id: savedProduct.id,
@@ -68,7 +72,7 @@ export class ProductsService {
           reason: MutationReason.SUPPLIER_RESTOCK,
           quantity: initialStock,
           unit_cost_price: savedProduct.cost_price,
-          unit_selling_price: savedProduct.selling_price, // 👈 FIXED: price -> selling_price
+          unit_selling_price: savedProduct.selling_price,
         });
         await queryRunner.manager.save(Stocks, mutation);
       }
@@ -78,9 +82,7 @@ export class ProductsService {
     } catch (error) {
       await queryRunner.rollbackTransaction();
       console.error('Error creating product:', error);
-      throw new InternalServerErrorException(
-        'Failed to create product. Please try again.',
-      );
+      throw new InternalServerErrorException('Failed to create product.');
     } finally {
       await queryRunner.release();
     }
@@ -101,7 +103,6 @@ export class ProductsService {
       const limitNumber = Math.max(1, Number(limit) || 10);
       const skip = (pageNumber - 1) * limitNumber;
 
-      // FIXED: Removed company_id filter restriction scope boundary
       const [products, totalItems] = await this.productRepository.findAndCount({
         take: limitNumber,
         skip: skip,
@@ -160,7 +161,7 @@ export class ProductsService {
   async update(
     id: string,
     updateProductDto: UpdateProductDto,
-    file?: Express.Multer.File,
+    files?: Express.Multer.File[],
   ): Promise<ApiResponse<Product>> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -179,17 +180,21 @@ export class ProductsService {
       }
 
       // 1. Dynamic Asset Management Teardown & Swap
-      if (file) {
+      if (files && files.length > 0) {
         if (product.images && product.images.length > 0) {
           for (const oldImg of product.images) {
             await this.cloudinaryService.deleteImage(oldImg.publicId);
           }
         }
-        const newAsset = await this.cloudinaryService.uploadProductImage(
-          file,
-          'products',
-        );
-        product.images = [newAsset];
+        const newAssets: CloudinaryImage[] = [];
+        for (const file of files) {
+          const newAsset = await this.cloudinaryService.uploadProductImage(
+            file,
+            'products',
+          );
+          newAssets.push(newAsset);
+        }
+        product.images = newAssets;
       }
 
       // 2. Audit Ledger Drift Monitoring

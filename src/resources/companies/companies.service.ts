@@ -11,7 +11,7 @@ import { Company } from './entities/company.entity';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { ApiResponse, successResponse } from '../../utils/response.utils';
-import { CloudinaryService } from '../../utils/helpers/cloudinary.service';
+import { CloudinaryService } from '../../utils/helpers/cloudinary/cloudinary.service';
 
 @Injectable()
 export class CompaniesService {

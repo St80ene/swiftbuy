@@ -10,6 +10,7 @@ import { CompaniesModule } from './resources/companies/companies.module';
 import { StockModule } from './resources/stocks/stock.module';
 import { UsersModule } from './resources/users/users.module';
 import { ProductsModule } from './resources/products/products.module';
+import { CloudinaryModule } from './utils/helpers/cloudinary/cloudinary.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -29,6 +30,7 @@ import { ProductsModule } from './resources/products/products.module';
     CompaniesModule,
     UsersModule,
     StockModule,
+    CloudinaryModule, // ◄ Add the CloudinaryModule here
   ],
   controllers: [AppController],
   providers: [

@@ -7,12 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-
-export interface ProductImage {
-  url: string;
-  publicId: string;
-  isPrimary: boolean;
-}
+import { CloudinaryImage } from '../../../utils/helpers/cloudinary/cloudinary.service';
 
 @Entity({ name: 'products' })
 export class Product extends BaseEntity {
@@ -33,7 +28,7 @@ export class Product extends BaseEntity {
   description?: string;
 
   @Column({ type: 'json', default: () => "('[]')" })
-  images!: ProductImage[];
+  images!: CloudinaryImage[];
 
   @Column({ type: 'int', default: 0 })
   stock_quantity!: number;
