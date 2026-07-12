@@ -7,7 +7,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Product } from './entities/product.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, IsNull } from 'typeorm';
 import {
   CloudinaryService,
   CloudinaryImage,
@@ -50,8 +50,6 @@ export class ProductsService {
         productImages = await Promise.all(uploadPromises);
       }
 
-      console.log('Uploaded product images:', productImages);
-
       const initialStock = Number(createProductDto.stock_quantity) || 0;
 
       // 2. Build the core product record
@@ -65,17 +63,19 @@ export class ProductsService {
       const savedProduct = await queryRunner.manager.save(Product, product);
 
       // 3. Ledger Allocation
-      if (initialStock > 0) {
-        const mutation = queryRunner.manager.create(Stocks, {
-          product_id: savedProduct.id,
-          type: MutationType.INFLOW,
-          reason: MutationReason.SUPPLIER_RESTOCK,
-          quantity: initialStock,
-          unit_cost_price: savedProduct.cost_price,
-          unit_selling_price: savedProduct.selling_price,
-        });
-        await queryRunner.manager.save(Stocks, mutation);
-      }
+      const mutation = queryRunner.manager.create(Stocks, {
+        product_id: savedProduct.id,
+        type: MutationType.INFLOW,
+        reason:
+          initialStock > 0
+            ? MutationReason.SUPPLIER_RESTOCK
+            : MutationReason.NEW_PRODUCT_INITIALIZATION,
+        quantity: initialStock,
+        unit_cost_price: savedProduct.cost_price,
+        unit_selling_price: savedProduct.selling_price,
+      });
+
+      await queryRunner.manager.save(Stocks, mutation);
 
       await queryRunner.commitTransaction();
       return successResponse('Product created successfully', savedProduct);
@@ -107,6 +107,7 @@ export class ProductsService {
         take: limitNumber,
         skip: skip,
         order: { createdAt: 'DESC' },
+        where: { deletedAt: IsNull() },
       });
 
       const totalPages = Math.ceil(totalItems / limitNumber);
@@ -136,7 +137,6 @@ export class ProductsService {
    */
   async findOne(id: string): Promise<ApiResponse<Product>> {
     try {
-      // FIXED: Removed company_id lookup layer
       const product = await this.productRepository.findOne({ where: { id } });
 
       if (!product) {
@@ -168,7 +168,6 @@ export class ProductsService {
     await queryRunner.startTransaction();
 
     try {
-      // FIXED: Removed company_id lookup layer
       const product = await queryRunner.manager.findOne(Product, {
         where: { id },
       });
@@ -179,23 +178,39 @@ export class ProductsService {
         );
       }
 
-      // 1. Dynamic Asset Management Teardown & Swap
-      if (files && files.length > 0) {
-        if (product.images && product.images.length > 0) {
-          for (const oldImg of product.images) {
-            await this.cloudinaryService.deleteImage(oldImg.publicId);
-          }
-        }
-        const newAssets: CloudinaryImage[] = [];
-        for (const file of files) {
-          const newAsset = await this.cloudinaryService.uploadProductImage(
-            file,
-            'products',
+      // --- NEW PARTIAL IMAGE MANAGEMENT LOGIC ---
+      let currentImages = [...(product.images || [])];
+
+      // 1. Process deletions if specific publicIds are targeted
+      if (
+        updateProductDto.imagesToDelete &&
+        updateProductDto.imagesToDelete.length > 0
+      ) {
+        for (const publicId of updateProductDto.imagesToDelete) {
+          // Delete from Cloudinary
+          await this.cloudinaryService.deleteImage(publicId);
+
+          // Remove from local tracking array
+          currentImages = currentImages.filter(
+            (img) => img.publicId !== publicId,
           );
-          newAssets.push(newAsset);
         }
-        product.images = newAssets;
       }
+
+      // 2. Process new uploads and append them if any exist
+      if (files && files.length > 0) {
+        const uploadPromises = files.map((file) =>
+          this.cloudinaryService.uploadProductImage(file, 'products'),
+        );
+        const newAssets = await Promise.all(uploadPromises);
+
+        // Append new images instead of overwriting the whole array
+        currentImages = [...currentImages, ...newAssets];
+      }
+
+      // Assign the final adjusted array back to the product record
+      product.images = currentImages;
+      // ------------------------------------------
 
       // 2. Audit Ledger Drift Monitoring
       if (updateProductDto.stock_quantity !== undefined) {
@@ -210,7 +225,7 @@ export class ProductsService {
             quantity: Math.abs(difference),
             unit_cost_price: updateProductDto.cost_price ?? product.cost_price,
             unit_selling_price:
-              updateProductDto.selling_price ?? product.selling_price, // 👈 FIXED: price -> selling_price
+              updateProductDto.selling_price ?? product.selling_price,
           });
 
           await queryRunner.manager.save(Stocks, mutation);
@@ -219,11 +234,12 @@ export class ProductsService {
       }
 
       // 3. Save adjustments safely
-      this.productRepository.merge(product, {
+      queryRunner.manager.merge(Product, product, {
+        // 👈 Use queryRunner.manager.merge inside transactions!
         name: updateProductDto.name,
         description: updateProductDto.description,
         cost_price: updateProductDto.cost_price,
-        selling_price: updateProductDto.selling_price, // 👈 FIXED: price -> selling_price
+        selling_price: updateProductDto.selling_price,
         category: updateProductDto.category,
       });
 
