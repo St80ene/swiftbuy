@@ -21,6 +21,7 @@ export enum MutationReason {
   DAMAGED = 'DAMAGED',
   EXPIRED = 'EXPIRED',
   AUDIT_CORRECTION = 'AUDIT_CORRECTION',
+  NEW_PRODUCT_INITIALIZATION = 'NEW_PRODUCT_INITIALIZATION',
 }
 
 @Entity({ name: 'stocks' })
