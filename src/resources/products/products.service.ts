@@ -5,7 +5,12 @@ import {
 } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { Product } from './entities/product.entity';
+import {
+  Product,
+  UomBaseName,
+  UomDisplayName,
+  UomType,
+} from './entities/product.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, IsNull } from 'typeorm';
 import {
@@ -18,6 +23,8 @@ import {
   MutationType,
   Stocks,
 } from '../stocks/entities/stock.entity';
+import convertToIntegerBaseUnit from '../../utils/convertToBaseInteger';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 
 @Injectable()
 export class ProductsService {
@@ -33,7 +40,7 @@ export class ProductsService {
    */
   async create(
     createProductDto: CreateProductDto,
-    files?: Express.Multer.File[], // ◄ Expect an array
+    files?: Express.Multer.File[],
   ): Promise<ApiResponse<Product>> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -42,7 +49,6 @@ export class ProductsService {
     try {
       let productImages: CloudinaryImage[] = [];
 
-      // Loop and upload all images concurrently if files exist
       if (files && files.length > 0) {
         const uploadPromises = files.map((file) =>
           this.cloudinaryService.uploadProductImage(file, 'products'),
@@ -50,31 +56,43 @@ export class ProductsService {
         productImages = await Promise.all(uploadPromises);
       }
 
-      const initialStock = Number(createProductDto.stock_quantity) || 0;
+      // Convert incoming human stock quantity to integer base units (e.g. 1.5kg -> 1500g)
+      const initialStockBase = convertToIntegerBaseUnit(
+        createProductDto.stock_quantity,
+        createProductDto.uom_type as UomType,
+      );
+
+      const reorderLevelBase = convertToIntegerBaseUnit(
+        createProductDto.reorder_level || 5,
+        createProductDto.uom_type as UomType,
+      );
 
       // 2. Build the core product record
       const product = queryRunner.manager.create(Product, {
         ...createProductDto,
-        images: productImages, // ◄ Saves the JSON array of Cloudinary assets
-        stock_quantity: initialStock,
-        is_low_stock: initialStock <= (createProductDto.reorder_level || 5),
+        images: productImages,
+        stock_quantity: initialStockBase,
+        reorder_level: reorderLevelBase,
+        is_low_stock: initialStockBase <= reorderLevelBase,
+        uom_type: createProductDto.uom_type as UomType,
+        uom_base_name: createProductDto.uom_base_name as UomBaseName,
+        uom_display_name: createProductDto.uom_display_name as UomDisplayName,
       });
 
       const savedProduct = await queryRunner.manager.save(Product, product);
 
-      // 3. Ledger Allocation
+      // 3. Complete Ledger Trace Allocation (Real-World Audit Pattern)
       const mutation = queryRunner.manager.create(Stocks, {
         product_id: savedProduct.id,
         type: MutationType.INFLOW,
         reason:
-          initialStock > 0
+          initialStockBase > 0
             ? MutationReason.SUPPLIER_RESTOCK
             : MutationReason.NEW_PRODUCT_INITIALIZATION,
-        quantity: initialStock,
+        quantity: initialStockBase, // Guarded as safe base integer
         unit_cost_price: savedProduct.cost_price,
         unit_selling_price: savedProduct.selling_price,
       });
-
       await queryRunner.manager.save(Stocks, mutation);
 
       await queryRunner.commitTransaction();
@@ -91,14 +109,11 @@ export class ProductsService {
   /**
    * ─── FIND ALL ───
    */
-  async findAll({
-    page,
-    limit,
-  }: {
-    page?: number;
-    limit?: number;
-  }): Promise<ApiResponse<{ products: Product[]; meta: any }>> {
+  async findAll(
+    paginationQuery: PaginationQueryDto,
+  ): Promise<ApiResponse<{ products: Product[]; meta: any }>> {
     try {
+      const { page = 1, limit = 10 } = paginationQuery;
       const pageNumber = Math.max(1, Number(page) || 1);
       const limitNumber = Math.max(1, Number(limit) || 10);
       const skip = (pageNumber - 1) * limitNumber;
@@ -178,69 +193,78 @@ export class ProductsService {
         );
       }
 
-      // --- NEW PARTIAL IMAGE MANAGEMENT LOGIC ---
+      // 1. Partial Image Management Strategy
       let currentImages = [...(product.images || [])];
 
-      // 1. Process deletions if specific publicIds are targeted
       if (
         updateProductDto.imagesToDelete &&
         updateProductDto.imagesToDelete.length > 0
       ) {
         for (const publicId of updateProductDto.imagesToDelete) {
-          // Delete from Cloudinary
           await this.cloudinaryService.deleteImage(publicId);
-
-          // Remove from local tracking array
           currentImages = currentImages.filter(
             (img) => img.publicId !== publicId,
           );
         }
       }
 
-      // 2. Process new uploads and append them if any exist
       if (files && files.length > 0) {
         const uploadPromises = files.map((file) =>
           this.cloudinaryService.uploadProductImage(file, 'products'),
         );
         const newAssets = await Promise.all(uploadPromises);
-
-        // Append new images instead of overwriting the whole array
         currentImages = [...currentImages, ...newAssets];
       }
 
-      // Assign the final adjusted array back to the product record
       product.images = currentImages;
-      // ------------------------------------------
 
-      // 2. Audit Ledger Drift Monitoring
+      // 2. Audit Ledger Drift Monitoring with UOM Translation
+      const currentUomType = updateProductDto.uom_type || product.uom_type;
+
       if (updateProductDto.stock_quantity !== undefined) {
-        const newStock = Number(updateProductDto.stock_quantity);
-        if (newStock !== product.stock_quantity) {
-          const difference = newStock - product.stock_quantity;
+        // Convert updated human quantity input to base unit scale matching target UOM
+        const newStockBase = convertToIntegerBaseUnit(
+          updateProductDto.stock_quantity,
+          currentUomType as UomType,
+        );
+
+        if (newStockBase !== product.stock_quantity) {
+          const difference = newStockBase - product.stock_quantity;
 
           const mutation = queryRunner.manager.create(Stocks, {
             product_id: product.id,
             type: difference > 0 ? MutationType.INFLOW : MutationType.OUTFLOW,
             reason: MutationReason.AUDIT_CORRECTION,
-            quantity: Math.abs(difference),
+            quantity: Math.abs(difference), // Saved as absolute integer base value
             unit_cost_price: updateProductDto.cost_price ?? product.cost_price,
             unit_selling_price:
               updateProductDto.selling_price ?? product.selling_price,
           });
 
           await queryRunner.manager.save(Stocks, mutation);
-          product.stock_quantity = newStock;
+          product.stock_quantity = newStockBase;
         }
       }
 
-      // 3. Save adjustments safely
+      // Recalculate dynamic flags based on the base unit updates
+      if (updateProductDto.reorder_level !== undefined) {
+        product.reorder_level = convertToIntegerBaseUnit(
+          updateProductDto.reorder_level,
+          currentUomType as UomType,
+        );
+      }
+      product.is_low_stock = product.stock_quantity <= product.reorder_level;
+
+      // 3. Save adjustments safely via queryRunner manager
       queryRunner.manager.merge(Product, product, {
-        // 👈 Use queryRunner.manager.merge inside transactions!
         name: updateProductDto.name,
         description: updateProductDto.description,
         cost_price: updateProductDto.cost_price,
         selling_price: updateProductDto.selling_price,
         category: updateProductDto.category,
+        uom_type: updateProductDto.uom_type as UomType,
+        uom_base_name: updateProductDto.uom_base_name as UomBaseName,
+        uom_display_name: updateProductDto.uom_display_name as UomDisplayName,
       });
 
       const updatedProduct = await queryRunner.manager.save(Product, product);

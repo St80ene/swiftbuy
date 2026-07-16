@@ -1,4 +1,3 @@
-// src/common/filters/global-exception.filter.ts
 import {
   ExceptionFilter,
   Catch,
@@ -52,8 +51,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       exception instanceof HttpException && exceptionResponse
         ? typeof exceptionResponse === 'string'
           ? 'ERR_INTERNAL_SERVER'
-          : (exceptionResponse as NestHttpExceptionResponse).errorCode ||
-            'ERR_BAD_REQUEST'
+          : exceptionResponse.errorCode || 'ERR_BAD_REQUEST'
         : 'ERR_UNEXPECTED_SYSTEM_FAILURE';
 
     // 1. Telemetry Logging (To CloudWatch, Datadog, or Loki)

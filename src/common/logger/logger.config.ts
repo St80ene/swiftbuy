@@ -1,4 +1,3 @@
-// src/common/logger/logger.config.ts
 import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
@@ -30,7 +29,7 @@ export const createLoggerConfig = () => {
                     ? JSON.stringify(context)
                     : (context as string) || '';
 
-                const unknMessage = message as unknown;
+                const unknMessage = message !== undefined ? message : '';
                 let messageStr = '';
                 if (typeof unknMessage === 'object' && unknMessage !== null) {
                   messageStr = JSON.stringify(unknMessage);

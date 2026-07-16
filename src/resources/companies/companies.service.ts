@@ -11,7 +11,10 @@ import { Company } from './entities/company.entity';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { ApiResponse, successResponse } from '../../utils/response.utils';
-import { CloudinaryService } from '../../utils/helpers/cloudinary/cloudinary.service';
+import {
+  CloudinaryImage,
+  CloudinaryService,
+} from '../../utils/helpers/cloudinary/cloudinary.service';
 
 @Injectable()
 export class CompaniesService {
@@ -35,7 +38,7 @@ export class CompaniesService {
     }
 
     try {
-      let companyLogo: { url: string; publicId: string } | null = null;
+      let companyLogo: CloudinaryImage | null = null;
 
       // Upload to flat single-tenant branding asset namespace
       if (file) {
@@ -55,7 +58,7 @@ export class CompaniesService {
         phone_number: createCompanyDto.phone_number,
         currency: createCompanyDto.currency,
         settings: { ...createCompanyDto.settings },
-        logo: companyLogo, // Matches the updated entity column
+        logo: companyLogo,
       });
 
       const saved = await this.companyRepository.save(company);
@@ -123,11 +126,11 @@ export class CompaniesService {
 
     try {
       // Clear branding files immediately so storage remain completely lean
-      if (company.logo?.publicId) {
+      if (company?.logo?.publicId) {
         await this.cloudinaryService.deleteImage(company.logo.publicId);
       }
 
-      await this.companyRepository.remove(company);
+      await this.companyRepository.softRemove(company);
       return successResponse('Company configuration completely purged', null);
     } catch (error) {
       console.error(`Error deleting company profile ${id}:`, error);
