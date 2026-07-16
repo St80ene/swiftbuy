@@ -17,6 +17,7 @@ import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { FilesInterceptor } from '@nestjs/platform-express';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 
 @Controller('products')
 export class ProductsController {
@@ -32,11 +33,8 @@ export class ProductsController {
   }
 
   @Get()
-  findAll(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-  ) {
-    return this.productsService.findAll({ page, limit });
+  findAll(@Query() paginationQuery: PaginationQueryDto) {
+    return this.productsService.findAll(paginationQuery);
   }
 
   @Get(':id')

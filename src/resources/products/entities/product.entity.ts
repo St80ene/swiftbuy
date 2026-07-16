@@ -4,11 +4,13 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { CloudinaryImage } from '../../../utils/helpers/cloudinary/cloudinary.service';
 import { IsEnum } from 'class-validator';
+import { ProductSource } from '../../product_sources/entities/product_source.entity';
 
 export enum UomType {
   UNIT = 'UNIT',
@@ -84,6 +86,10 @@ export class Product extends BaseEntity {
   })
   @Column({ type: 'varchar', length: 10, default: 'pcs' })
   uom_display_name!: UomDisplayName; // 'pcs', 'kg', 'L'
+
+  // Bidirectional link: Let's us do: productRepository.find({ relations: { source: true } })
+  @OneToOne(() => ProductSource, (source) => source.product)
+  source!: ProductSource;
 
   @CreateDateColumn({
     type: 'datetime',
