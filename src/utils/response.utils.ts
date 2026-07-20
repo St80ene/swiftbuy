@@ -13,7 +13,10 @@ export function successResponse<T>(message: string, data: T): ApiResponse<T> {
   };
 }
 
-export function errorResponse(message: string, error?: any): ApiResponse<null> {
+export function errorResponse(
+  message: string,
+  error?: unknown,
+): ApiResponse<null> {
   return {
     status: false,
     message,
