@@ -9,7 +9,6 @@ interface CloudinaryDestroyResponse {
 export interface CloudinaryImage {
   url: string;
   publicId: string;
-  isPrimary?: boolean;
 }
 
 @Injectable()
@@ -25,6 +24,7 @@ export class CloudinaryService {
     const sanitizedFolder = folderName
       .toLowerCase()
       .replace(/[^a-z0-9-_]/g, '-');
+
     const originalNameWithoutExt = path.parse(file.originalname).name;
     const sanitizedFileName = originalNameWithoutExt
       .toLowerCase()
@@ -56,7 +56,6 @@ export class CloudinaryService {
           resolve({
             url: apiResponse.secure_url,
             publicId: apiResponse.public_id,
-            isPrimary: true,
           });
         },
       );

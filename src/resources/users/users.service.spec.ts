@@ -3,10 +3,20 @@ import { UsersService } from './users.service';
 
 describe('UsersService', () => {
   let service: UsersService;
+  const mockUserRepository = {
+    save: jest.fn(),
+    find: jest.fn(),
+    findOne: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [UsersService],
+      providers: [
+        UsersService,
+        { provide: UsersService, useValue: { mockUserRepository } },
+      ],
     }).compile();
 
     service = module.get<UsersService>(UsersService);

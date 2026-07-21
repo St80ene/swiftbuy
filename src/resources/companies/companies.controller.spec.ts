@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CompaniesController } from './companies.controller';
+import { ReadableStream } from 'stream/web';
 import { CompaniesService } from './companies.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
@@ -45,8 +46,7 @@ describe('CompaniesController', () => {
     logo: {
       url: 'data:image/png;base64,mock-image-data',
       publicId: 'mock-public-id',
-      isPrimary: true,
-    }, // Simulate base64 logo for testing
+    },
   };
 
   beforeEach(async () => {

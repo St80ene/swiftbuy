@@ -7,9 +7,7 @@ import {
   Param,
   Delete,
   Query,
-  DefaultValuePipe,
   UseInterceptors,
-  ParseIntPipe,
   ParseUUIDPipe,
   UploadedFiles,
 } from '@nestjs/common';
