@@ -1,3 +1,4 @@
+import { IsString, IsOptional, IsBoolean } from 'class-validator';
 import {
   BaseEntity,
   Column,
@@ -7,12 +8,24 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { CloudinaryImage } from '../../../utils/helpers/cloudinary/cloudinary.service';
 
-// Define structural layout for flexible tenant configurations
-export interface CompanySettings {
-  theme?: string;
-  allowNotifications?: boolean;
-  [key: string]: any; // Flexible key-value pairs for tenant-specific settings
+export class CompanySettings {
+  @IsString()
+  @IsOptional()
+  themeColor?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  enableNotifications?: boolean;
+
+  @IsString()
+  @IsOptional()
+  timezone?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  allowSelfRegistration?: boolean;
 }
 
 @Entity({ name: 'companies' })
@@ -40,10 +53,7 @@ export class Company extends BaseEntity {
   currency!: string;
 
   @Column({ type: 'json', nullable: true })
-  logo?: {
-    url: string; // The direct Cloudinary asset image URL
-    publicId: string; // Used to replace/delete the asset later
-  } | null;
+  logo?: CloudinaryImage | null;
 
   // MySQL Optimized Settings Blob
   // Type is set to 'json' to fully comply with multi-version MySQL engines

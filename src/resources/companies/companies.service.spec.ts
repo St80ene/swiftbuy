@@ -6,6 +6,14 @@ import { CreateCompanyDto } from './dto/create-company.dto';
 import { NotFoundException } from '@nestjs/common';
 import { CloudinaryService } from '../../utils/helpers/cloudinary/cloudinary.service';
 
+export const mockCloudinaryService = {
+  uploadProductImage: jest.fn().mockResolvedValue({
+    url: 'https://cdn.com/logo.png',
+    publicId: 'public-id-123',
+  }),
+  deleteImage: jest.fn().mockResolvedValue(true),
+};
+
 describe('CompaniesService', () => {
   let service: CompaniesService;
 
@@ -33,14 +41,6 @@ describe('CompaniesService', () => {
     path: '',
     stream: null as any,
   });
-
-  const mockCloudinaryService = {
-    uploadProductImage: jest.fn().mockResolvedValue({
-      url: 'https://cdn.com/logo.png',
-      publicId: 'public-id-123',
-    }),
-    deleteImage: jest.fn().mockResolvedValue(true),
-  };
 
   beforeEach(async () => {
     jest.resetAllMocks();
