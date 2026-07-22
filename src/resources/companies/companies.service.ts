@@ -31,12 +31,15 @@ export class CompaniesService {
     createCompanyDto: CreateCompanyDto,
     file?: Express.Multer.File,
   ): Promise<ApiResponse<Company>> {
+    const { email, name } = createCompanyDto; // Destructure to ensure all required fields are present
+
     const exists = await this.companyRepository.findOne({
-      where: { name: createCompanyDto.name },
+      where: { name, email },
     });
+
     if (exists) {
       throw new ConflictException(
-        `Workspace name '${createCompanyDto.name}' is taken.`,
+        `Workspace name '${name}' or email '${email}' is taken.`,
       );
     }
 

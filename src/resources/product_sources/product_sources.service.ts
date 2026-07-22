@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -17,12 +21,27 @@ export class ProductSourcesService {
 
   async create(
     createProductSourceDto: CreateProductSourceDto,
-  ): Promise<ProductSource> {
+  ): Promise<ApiResponse<ProductSource>> {
+    const { product_id, supplier_id } = createProductSourceDto;
+
+    // Check if this product-supplier link already exists
+    const existingSource = await this.productSourceRepository.findOne({
+      where: { product_id, supplier_id },
+    });
+
+    if (existingSource) {
+      throw new ConflictException(
+        'Product source relation for this product and supplier already exists',
+      );
+    }
+
     const productSource = this.productSourceRepository.create(
       createProductSourceDto,
     );
 
-    return await this.productSourceRepository.save(productSource);
+    const savedSource = await this.productSourceRepository.save(productSource);
+
+    return successResponse('Product Source created successfully', savedSource);
   }
 
   async findAll(
@@ -41,8 +60,9 @@ export class ProductSourcesService {
       productSources,
       meta: {
         total,
-        skip: (page - 1) * limit,
-        take: limit,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       },
     });
   }
@@ -53,10 +73,10 @@ export class ProductSourcesService {
     });
 
     if (!productSource) {
-      throw new NotFoundException(`Product source with ID ${id} not found`);
+      throw new NotFoundException(`Product Source with ID ${id} not found`);
     }
 
-    return successResponse('Product Supplier profile retrieved', productSource);
+    return successResponse('Product Source retrieved', productSource);
   }
 
   async update(
@@ -66,7 +86,7 @@ export class ProductSourcesService {
     const { data: productSource } = await this.findOne(id);
 
     if (!productSource) {
-      throw new NotFoundException('Product source not found');
+      throw new NotFoundException(`Product Source with ID ${id} not found`);
     }
 
     this.productSourceRepository.merge(productSource, updateProductSourceDto);
@@ -75,7 +95,7 @@ export class ProductSourcesService {
       await this.productSourceRepository.save(productSource);
 
     return successResponse(
-      'Product source profile updated successfully',
+      'Product Source updated successfully',
       savedProductSource,
     );
   }
@@ -84,11 +104,11 @@ export class ProductSourcesService {
     const { data: productSource } = await this.findOne(id);
 
     if (!productSource) {
-      throw new NotFoundException('Product source not found');
+      throw new NotFoundException(`Product Source with ID ${id} not found`);
     }
 
     await this.productSourceRepository.remove(productSource);
 
-    return successResponse('Product source deleted successfully', null);
+    return successResponse('Product Source deleted successfully', null);
   }
 }

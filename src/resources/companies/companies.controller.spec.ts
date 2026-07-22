@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CompaniesController } from './companies.controller';
-import { ReadableStream } from 'stream/web';
 import { CompaniesService } from './companies.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
@@ -62,7 +61,7 @@ describe('CompaniesController', () => {
 
     controller = module.get<CompaniesController>(CompaniesController);
 
-    // Instantiate validation boundaries locally for security testing [cite: 86]
+    // Instantiate validation boundaries locally for security testing
     validationPipe = new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
@@ -70,7 +69,7 @@ describe('CompaniesController', () => {
     });
     uuidPipe = new ParseUUIDPipe();
 
-    jest.clearAllMocks(); // Prevent assertion leaks between tests [cite: 84]
+    jest.clearAllMocks(); // Prevent assertion leaks between tests
   });
 
   it('should be defined', () => {
@@ -86,7 +85,7 @@ describe('CompaniesController', () => {
         const mockResult = { id: 'uuid-1234', ...createDto, logo: null };
         mockCompaniesService.create.mockResolvedValue(mockResult);
 
-        const result = await controller.create(createDto, undefined); // [cite: 58, 61, 62]
+        const result = await controller.create(createDto, undefined);
 
         expect(mockCompaniesService.create).toHaveBeenCalledWith(
           createDto,
@@ -102,9 +101,10 @@ describe('CompaniesController', () => {
           ...createDto,
           logo: 'https://cdn.com/logo.png',
         };
+
         mockCompaniesService.create.mockResolvedValue(mockResult);
 
-        const result = await controller.create(createDto, mockFile); // [cite: 58, 61, 62]
+        const result = await controller.create(createDto, mockFile);
 
         expect(mockCompaniesService.create).toHaveBeenCalledWith(
           createDto,
@@ -115,7 +115,9 @@ describe('CompaniesController', () => {
 
       it('should propagate service exceptions safely', async () => {
         mockCompaniesService.create.mockRejectedValue(
-          new BadRequestException('Email already exists'),
+          new BadRequestException(
+            `Workspace name '${createDto.name}' or email '${createDto.email}' is taken.`,
+          ),
         );
 
         await expect(controller.create(createDto, undefined)).rejects.toThrow(
