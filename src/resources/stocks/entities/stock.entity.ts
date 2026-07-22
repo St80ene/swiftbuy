@@ -1,4 +1,3 @@
-// src/inventory/entities/stock.entity.ts
 import { IsUUID, IsNotEmpty, IsEnum, IsInt, Min } from 'class-validator';
 import {
   BaseEntity,
@@ -8,7 +7,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-// 1. Core Ledger Flow Enums
+// Core Ledger Flow Enums
 export enum MutationType {
   INFLOW = 'INFLOW',
   OUTFLOW = 'OUTFLOW',
