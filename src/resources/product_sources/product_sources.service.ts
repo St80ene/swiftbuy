@@ -49,14 +49,14 @@ export class ProductSourcesService {
   ): Promise<ApiResponse<{ productSources: ProductSource[]; meta: any }>> {
     const { page = 1, limit = 10 } = paginationQuery;
 
-    const findWhereCondition: FindManyOptions = {
+    const findCondition: FindManyOptions = {
       skip: (page - 1) * limit,
       take: limit,
       order: { createdAt: 'DESC' },
     };
 
     const [productSources, total] =
-      await this.productSourceRepository.findAndCount(findWhereCondition);
+      await this.productSourceRepository.findAndCount(findCondition);
 
     return successResponse('Product sources retrieved successfully', {
       productSources,
