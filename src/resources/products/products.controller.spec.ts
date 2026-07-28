@@ -6,6 +6,11 @@ import {
   BadRequestException,
   InternalServerErrorException,
 } from '@nestjs/common';
+import {
+  UomBaseName,
+  UomDisplayName,
+  UomType,
+} from './entities/product.entity';
 
 describe('ProductsController', () => {
   let controller: ProductsController;
@@ -44,9 +49,9 @@ describe('ProductsController', () => {
       selling_price: 1500,
       stock_quantity: 50,
       reorder_level: 10,
-      uom_type: 'WEIGHT',
-      uom_base_name: 'GRAM',
-      uom_display_name: 'kg',
+      uom_type: UomType.WEIGHT,
+      uom_base_name: UomBaseName.G,
+      uom_display_name: UomDisplayName.G,
     };
 
     const createMockFile = (filename = 'rice.png'): Express.Multer.File =>

@@ -5,7 +5,7 @@ export interface ApiResponse<T> {
   error?: any;
 }
 
-export function successResponse<T>(message: string, data: T): ApiResponse<T> {
+export function successResponse<T>(message: string, data?: T): ApiResponse<T> {
   return {
     status: true,
     message,

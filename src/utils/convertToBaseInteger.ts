@@ -1,12 +1,21 @@
-import { UomType } from '../resources/products/entities/product.entity';
+import { UomDisplayName } from '../resources/products/entities/product.entity';
 
-function convertToIntegerBaseUnit(quantity: number, uomType: UomType): number {
-  const numericQty = Number(quantity) || 0;
-  // If weight (kg -> g) or volume (L -> ml), scale up by 1000 to drop decimals
-  if (uomType === UomType.WEIGHT || uomType === UomType.VOLUME) {
-    return Math.round(numericQty * 1000);
+function convertToIntegerBaseUnit(
+  quantity: number,
+  displayUnit: UomDisplayName,
+): number {
+  switch (displayUnit) {
+    case UomDisplayName.KG:
+      return Math.round(quantity * 1000);
+
+    case UomDisplayName.L:
+      return Math.round(quantity * 1000);
+
+    case UomDisplayName.G:
+    case UomDisplayName.ML:
+    case UomDisplayName.PCS:
+      return Math.round(quantity);
   }
-  return Math.round(numericQty);
 }
 
 export default convertToIntegerBaseUnit;
