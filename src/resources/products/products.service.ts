@@ -59,12 +59,12 @@ export class ProductsService {
       // Convert incoming human stock quantity to integer base units (e.g. 1.5kg -> 1500g)
       const initialStockBase = convertToIntegerBaseUnit(
         createProductDto.stock_quantity,
-        createProductDto.uom_type as UomType,
+        createProductDto.uom_display_name,
       );
 
       const reorderLevelBase = convertToIntegerBaseUnit(
         createProductDto.reorder_level || 5,
-        createProductDto.uom_type as UomType,
+        createProductDto.uom_display_name,
       );
 
       // 2. Build the core product record
@@ -74,9 +74,9 @@ export class ProductsService {
         stock_quantity: initialStockBase,
         reorder_level: reorderLevelBase,
         is_low_stock: initialStockBase <= reorderLevelBase,
-        uom_type: createProductDto.uom_type as UomType,
-        uom_base_name: createProductDto.uom_base_name as UomBaseName,
-        uom_display_name: createProductDto.uom_display_name as UomDisplayName,
+        uom_type: createProductDto.uom_type,
+        uom_base_name: createProductDto.uom_base_name,
+        uom_display_name: createProductDto.uom_display_name,
       });
 
       const savedProduct = await queryRunner.manager.save(Product, product);
@@ -219,13 +219,14 @@ export class ProductsService {
       product.images = currentImages;
 
       // 2. Audit Ledger Drift Monitoring with UOM Translation
-      const currentUomType = updateProductDto.uom_type || product.uom_type;
+      const currentUomDisplayName =
+        updateProductDto.uom_display_name || product.uom_display_name;
 
       if (updateProductDto.stock_quantity !== undefined) {
         // Convert updated human quantity input to base unit scale matching target UOM
         const newStockBase = convertToIntegerBaseUnit(
           updateProductDto.stock_quantity,
-          currentUomType as UomType,
+          currentUomDisplayName,
         );
 
         if (newStockBase !== product.stock_quantity) {
@@ -250,7 +251,7 @@ export class ProductsService {
       if (updateProductDto.reorder_level !== undefined) {
         product.reorder_level = convertToIntegerBaseUnit(
           updateProductDto.reorder_level,
-          currentUomType as UomType,
+          currentUomDisplayName,
         );
       }
       product.is_low_stock = product.stock_quantity <= product.reorder_level;
@@ -288,7 +289,6 @@ export class ProductsService {
    */
   async remove(id: string): Promise<ApiResponse<null>> {
     try {
-      // FIXED: Removed company_id lookup layer
       const product = await this.productRepository.findOne({ where: { id } });
 
       if (!product) {

@@ -17,6 +17,7 @@ export class StockService {
    * ─── ADJUST STOCK VIA ATOMIC LEDGER TRANSACTION ───
    */
   async adjustStock(dto: AdjustStockDto): Promise<ApiResponse<Product>> {
+    // extend this service method to handle array of products
     if (dto.quantity <= 0) {
       throw new BadRequestException(
         'Mutation quantity must be greater than zero.',
@@ -91,10 +92,8 @@ export class StockService {
   /**
    * ─── COMPILE HISTORY LEDGER TIMELINE ───
    */
-  async getLedgerLogs(productId?: string): Promise<ApiResponse<Stocks[]>> {
-    const whereCondition: FindOptionsWhere<Stocks> = {};
-
-    if (productId) whereCondition.product_id = productId;
+  async getLedgerLogs(req?: AdjustStockDto): Promise<ApiResponse<Stocks[]>> {
+    const whereCondition: FindOptionsWhere<Stocks> = { ...req };
 
     const logs = await this.dataSource.getRepository(Stocks).find({
       where: whereCondition,

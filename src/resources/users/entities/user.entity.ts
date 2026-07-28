@@ -9,8 +9,9 @@ import {
 import { Exclude } from 'class-transformer';
 
 export enum UserRole {
-  ADMIN = 'ADMIN',
+  ADMIN = 'ADMIN', // Owner of the business/warehouse/store
   MANAGER = 'MANAGER',
+  STOREMAN = 'STOREMAN',
   CASHIER = 'CASHIER',
 }
 

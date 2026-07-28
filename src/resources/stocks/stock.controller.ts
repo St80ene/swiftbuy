@@ -1,6 +1,7 @@
 import { StockService } from './stock.service';
 import { CreateStockDto } from './dto/create-stock.dto';
-import { Controller, Get, Post, Body, Req, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Req } from '@nestjs/common';
+import { AdjustStockDto } from './entities/stock.entity';
 
 @Controller('stock')
 export class StockController {
@@ -12,7 +13,7 @@ export class StockController {
   }
 
   @Get('ledger')
-  getLedger(@Req() req: any, @Query('product_id') productId?: string) {
-    return this.stockService.getLedgerLogs(productId);
+  getLedger(@Req() req: AdjustStockDto) {
+    return this.stockService.getLedgerLogs(req);
   }
 }

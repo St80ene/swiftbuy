@@ -5,8 +5,15 @@ import {
   IsString,
   IsArray,
   Min,
+  IsEnum,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import {
+  UomType,
+  UomBaseName,
+  UomDisplayName,
+} from '../entities/product.entity';
+import { IsValidUom } from '../../../common/validators/uom.validator';
 
 export class CreateProductDto {
   @IsString()
@@ -52,15 +59,22 @@ export class CreateProductDto {
   images?: string[];
 
   // Unit of Measure (UOM) fields
-  @IsString()
-  @IsOptional()
-  uom_type?: string; // 'UNIT', 'WEIGHT', 'VOLUME'
+  @IsEnum(UomType, {
+    message: 'uom_type must be one of: UNIT, WEIGHT, VOLUME.',
+  })
+  uom_type!: UomType;
 
-  @IsString()
-  @IsOptional()
-  uom_base_name?: string; // 'pcs', 'g', 'ml'
+  @IsEnum(UomBaseName, {
+    message: 'uom_base_name must be one of: pcs, g, ml.',
+  })
+  uom_base_name!: UomBaseName;
 
-  @IsString()
-  @IsOptional()
-  uom_display_name?: string; // 'pcs', 'kg', 'L'
+  @IsEnum(UomDisplayName, {
+    message: 'uom_display_name must be one of: pcs, kg, L.',
+  })
+  @IsValidUom({
+    message:
+      'Invalid UOM combination. UNIT must use pcs. WEIGHT must use g with g/kg. VOLUME must use ml with ml/L.',
+  })
+  uom_display_name!: UomDisplayName;
 }

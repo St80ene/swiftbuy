@@ -26,7 +26,9 @@ export enum UomBaseName {
 
 export enum UomDisplayName {
   PCS = 'pcs',
+  G = 'g',
   KG = 'kg',
+  ML = 'ml',
   L = 'L',
 }
 
@@ -72,19 +74,19 @@ export class Product extends BaseEntity {
   @IsEnum(UomType, {
     message: 'Invalid UOM type. Must be one of: UNIT, WEIGHT, VOLUME.',
   })
-  @Column({ type: 'varchar', length: 20, default: 'UNIT' })
+  @Column({ type: 'varchar', length: 20, default: UomType.UNIT })
   uom_type!: UomType; // 'UNIT', 'WEIGHT', 'VOLUME'
 
   @IsEnum(UomBaseName, {
     message: 'Invalid UOM base name. Must be one of: pcs, g, ml.',
   })
-  @Column({ type: 'varchar', length: 10, default: 'pcs' })
+  @Column({ type: 'varchar', length: 10, default: UomBaseName.PCS })
   uom_base_name!: UomBaseName; // 'pcs', 'g', 'ml'
 
   @IsEnum(UomDisplayName, {
     message: 'Invalid UOM display name. Must be one of: pcs, kg, L.',
   })
-  @Column({ type: 'varchar', length: 10, default: 'pcs' })
+  @Column({ type: 'varchar', length: 10, default: UomDisplayName.PCS })
   uom_display_name!: UomDisplayName; // 'pcs', 'kg', 'L'
 
   // Bidirectional link: Let's us do: productRepository.find({ relations: { source: true } })

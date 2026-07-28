@@ -28,7 +28,7 @@ export class PurchaseOrder {
   supplier_id!: string;
 
   @Column({ type: 'varchar', length: 30, default: PurchaseOrderStatus.DRAFT })
-  status!: PurchaseOrderStatus;
+  status?: PurchaseOrderStatus;
 
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0.0 })
   total_estimated_cost!: number;

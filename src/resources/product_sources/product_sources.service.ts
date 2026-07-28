@@ -4,7 +4,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindManyOptions, Repository } from 'typeorm';
 
 import { ProductSource } from './entities/product_source.entity';
 import { CreateProductSourceDto } from './dto/create-product_source.dto';
@@ -49,12 +49,14 @@ export class ProductSourcesService {
   ): Promise<ApiResponse<{ productSources: ProductSource[]; meta: any }>> {
     const { page = 1, limit = 10 } = paginationQuery;
 
+    const findWhereCondition: FindManyOptions = {
+      skip: (page - 1) * limit,
+      take: limit,
+      order: { createdAt: 'DESC' },
+    };
+
     const [productSources, total] =
-      await this.productSourceRepository.findAndCount({
-        skip: (page - 1) * limit,
-        take: limit,
-        order: { createdAt: 'DESC' },
-      });
+      await this.productSourceRepository.findAndCount(findWhereCondition);
 
     return successResponse('Product sources retrieved successfully', {
       productSources,

@@ -17,6 +17,7 @@ import { PurchaseOrderItem } from './entities/purchase_order_item.entity';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { Product } from '../products/entities/product.entity';
 import { ProductSource } from '../product_sources/entities/product_source.entity';
+import { ApiResponse, successResponse } from '../../utils/response.utils';
 
 @Injectable()
 export class PurchaseOrdersService {
@@ -34,7 +35,7 @@ export class PurchaseOrdersService {
   async create(
     createPoDto: CreatePurchaseOrderDto,
     creatorId: string,
-  ): Promise<PurchaseOrder> {
+  ): Promise<ApiResponse<PurchaseOrder>> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -74,7 +75,12 @@ export class PurchaseOrdersService {
       await queryRunner.commitTransaction();
 
       // Return complete object back to caller with loaded items relation
-      return this.findOne(savedPo.id);
+      const existing_purchase_order = await this.findOne(savedPo.id);
+
+      return successResponse(
+        'Purchase Order created',
+        existing_purchase_order.data,
+      );
     } catch (error) {
       await queryRunner.rollbackTransaction();
       console.error('Failed to instantiate Purchase Order:', error);
@@ -134,105 +140,73 @@ export class PurchaseOrdersService {
   }
 
   // READ ONE: Detailed lookup via ID reference
-  async findOne(id: string): Promise<PurchaseOrder> {
-    const po = await this.purchaseOrderRepository.findOne({
+  async findOne(id: string): Promise<ApiResponse<PurchaseOrder>> {
+    const purchase_order = await this.purchaseOrderRepository.findOne({
       where: { id },
       relations: { items: true },
     });
-    if (!po) {
+    if (!purchase_order) {
       throw new NotFoundException(
         `Purchase Order with ID "${id}" could not be found.`,
       );
     }
-    return po;
+
+    return successResponse(
+      'Purchase Order retrieved successfully',
+      purchase_order,
+    );
   }
 
   // UPDATE: Basic properties modification
   async update(
     id: string,
     updatePoDto: UpdatePurchaseOrderDto,
-  ): Promise<PurchaseOrder> {
-    const po = await this.findOne(id);
+  ): Promise<ApiResponse<PurchaseOrder>> {
+    const purchase_order = await this.purchaseOrderRepository.findOne({
+      where: { id },
+    });
+
+    if (!purchase_order)
+      throw new NotFoundException(
+        `Product with ID "${id}" could not be found.`,
+      );
 
     // Guard: Prevent modification of completed orders unless explicitly handling arrivals
     if (
-      po.status === PurchaseOrderStatus.RECEIVED ||
-      po.status === PurchaseOrderStatus.CANCELLED
+      purchase_order.status === PurchaseOrderStatus.RECEIVED ||
+      purchase_order.status === PurchaseOrderStatus.CANCELLED
     ) {
+      // Guard: Prevent modification of completed orders unless explicitly handling arrivals
       throw new BadRequestException(
-        `Cannot alter a purchase order that is already ${po.status}.`,
+        `Cannot alter a purchase order that is already ${purchase_order?.status}.`,
       );
     }
 
-    this.purchaseOrderRepository.merge(po, updatePoDto);
-    return this.purchaseOrderRepository.save(po);
+    this.purchaseOrderRepository.merge(purchase_order, updatePoDto);
+    const updated: PurchaseOrder =
+      await this.purchaseOrderRepository.save(purchase_order);
+
+    return successResponse('Purchase Order updated successfully', updated);
   }
 
   // DELETE: Remove drafts safely
-  async remove(id: string): Promise<{ message: string }> {
-    const po = await this.findOne(id);
+  async remove(id: string): Promise<ApiResponse<null>> {
+    const purchase_order = await this.findOne(id);
+
+    if (!purchase_order)
+      throw new NotFoundException(
+        `Product with ID "${id}" could not be found.`,
+      );
 
     // Business rule safeguard: Only allow deleting un-submitted drafts
-    if (po.status !== PurchaseOrderStatus.DRAFT) {
+    if (purchase_order.data?.status !== PurchaseOrderStatus.DRAFT) {
       throw new BadRequestException(
         `Cannot delete a purchase order once it leaves the DRAFT state.`,
       );
     }
 
-    await this.purchaseOrderRepository.remove(po);
-    return { message: 'Purchase order record deleted successfully.' };
-  }
-
-  // CRON Task: Automatically create a new draft purchase order for each supplier if none exists based on stock replenishment needs
-  async runAutoReplenishment(creatorId: string) {
-    // Get all products that are below their reorder threshold
-    const lowStockProducts: Product[] = await this.productRepository
-      .createQueryBuilder('product')
-      .where('product.stock_quantity <= product.reorder_level')
-      .getMany();
-
-    if (lowStockProducts?.length === 0) {
-      return; // All shelves optimally stocked!
-    }
-
-    // Get the IDs of these low-stock products to find their active suppliers
-    const productIds: string[] = lowStockProducts.map((p) => p.id);
-
-    const activeSuppliers = await this.productSourceRepository.find({
-      where: {
-        product_id: In(productIds),
-      },
-      relations: {
-        supplier: true,
-        product: true,
-      },
-    });
-
-    const replenishmentMap = new Map<
-      string,
-      { supplierName: string; products: Product[] }
-    >();
-
-    for (const source of activeSuppliers) {
-      if (!source.supplier || !source.product) continue;
-
-      const supplierId = source['supplier']['id'];
-      const supplierName: string = source['supplier']['name'];
-
-      if (!replenishmentMap.has(`${supplierId}`)) {
-        replenishmentMap.set(`${supplierId}`, { supplierName, products: [] });
-      }
-
-      replenishmentMap.get(`${supplierId}`)!.products.push(source.product);
-    }
-
-    for (const [supplierId, info] of replenishmentMap.entries()) {
-      await this.createOrUpdateDraftForSupplier(
-        supplierId,
-        info.products,
-        creatorId,
-      );
-    }
+    await this.purchaseOrderRepository.softRemove(purchase_order.data);
+    return successResponse('Purchase order record deleted successfully.', null);
   }
 
   private async createOrUpdateDraftForSupplier(
@@ -240,7 +214,7 @@ export class PurchaseOrdersService {
     productsToReplenish: Product[],
     creatorId: string,
   ) {
-    // Check if an open DRAFT PO already exists for this supplier
+    // Check if an open DRAFT Purchase Order already exists for this supplier
     const existingDraft = await this.purchaseOrderRepository.findOne({
       where: {
         supplier_id: supplierId, // Switched from supplier_name to secure relation ID
@@ -250,7 +224,7 @@ export class PurchaseOrdersService {
     });
 
     if (!existingDraft) {
-      // Create a fresh draft PO
+      // Create a fresh draft Purchase Order
       const newDraft = new CreatePurchaseOrderDto();
       newDraft.supplier_id = supplierId;
 
@@ -286,6 +260,58 @@ export class PurchaseOrdersService {
       if (newItemsToAdd.length > 0) {
         await this.purchaseOrderRepository.manager.save(newItemsToAdd);
       }
+    }
+  }
+
+  // CRON Task: Automatically create a new draft purchase order for each supplier if none exists based on stock replenishment needs
+  async runAutoReplenishment(creatorId: string) {
+    // Get all products that are below their reorder threshold
+    const lowStockProducts: Product[] = await this.productRepository
+      .createQueryBuilder('product')
+      .where('product.stock_quantity <= product.reorder_level')
+      .getMany();
+
+    if (lowStockProducts?.length === 0) {
+      return; // All shelves optimally stocked!
+    }
+
+    // Get the IDs of these low-stock products to find their active suppliers
+    const productIds: string[] = lowStockProducts.map((p) => p.id);
+
+    const activeSuppliers = await this.productSourceRepository.find({
+      where: {
+        product_id: In(productIds),
+      },
+      relations: {
+        supplier: true,
+        product: true,
+      },
+    });
+
+    const replenishmentMap = new Map<
+      string,
+      { supplierName: string; products: Product[] }
+    >();
+
+    for (const source of activeSuppliers) {
+      if (!source.supplier || !source.product) continue;
+
+      const supplierId: string = source['supplier']['id'];
+      const supplierName: string = source['supplier']['name'];
+
+      if (!replenishmentMap.has(`${supplierId}`)) {
+        replenishmentMap.set(`${supplierId}`, { supplierName, products: [] });
+      }
+
+      replenishmentMap.get(`${supplierId}`)!.products.push(source.product);
+    }
+
+    for (const [supplierId, info] of replenishmentMap.entries()) {
+      await this.createOrUpdateDraftForSupplier(
+        supplierId,
+        info.products,
+        creatorId,
+      );
     }
   }
 }
