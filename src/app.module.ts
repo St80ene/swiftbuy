@@ -14,6 +14,7 @@ import { CloudinaryModule } from './utils/helpers/cloudinary/cloudinary.module';
 import { PurchaseOrdersModule } from './resources/purchase_orders/purchase_orders.module';
 import { SuppliersModule } from './resources/suppliers/suppliers.module';
 import { ProductSourcesModule } from './resources/product_sources/product_sources.module';
+import { ScheduleModule } from '@nestjs/schedule';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -37,6 +38,7 @@ import { ProductSourcesModule } from './resources/product_sources/product_source
     PurchaseOrdersModule,
     ProductSourcesModule,
     SuppliersModule,
+    ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [
