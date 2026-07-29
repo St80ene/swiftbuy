@@ -18,6 +18,7 @@ import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { Product } from '../products/entities/product.entity';
 import { ProductSource } from '../product_sources/entities/product_source.entity';
 import { ApiResponse, successResponse } from '../../utils/response.utils';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class PurchaseOrdersService {
@@ -264,6 +265,7 @@ export class PurchaseOrdersService {
   }
 
   // CRON Task: Automatically create a new draft purchase order for each supplier if none exists based on stock replenishment needs
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async runAutoReplenishment(creatorId: string) {
     // Get all products that are below their reorder threshold
     const lowStockProducts: Product[] = await this.productRepository
