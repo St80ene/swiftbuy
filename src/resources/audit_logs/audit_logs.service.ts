@@ -1,26 +1,77 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { Repository } from 'typeorm';
 import { CreateAuditLogDto } from './dto/create-audit_log.dto';
-import { UpdateAuditLogDto } from './dto/update-audit_log.dto';
+import { AuditLogQueryDto } from './dto/auditlog_query.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { AuditLog } from './entities/audit_log.entity';
+import { ApiResponse, successResponse } from '../../utils/response.utils';
 
 @Injectable()
 export class AuditLogsService {
-  create(createAuditLogDto: CreateAuditLogDto) {
-    return 'This action adds a new auditLog';
+  constructor(
+    @InjectRepository(AuditLog)
+    private readonly auditLogRepository: Repository<AuditLog>,
+  ) {}
+  async create(createAuditLogDto: CreateAuditLogDto): Promise<AuditLog> {
+    const auditLog = this.auditLogRepository.create(createAuditLogDto);
+
+    return await this.auditLogRepository.save(auditLog);
   }
 
-  findAll() {
-    return `This action returns all auditLogs`;
+  async findAll(query: AuditLogQueryDto): Promise<
+    ApiResponse<{
+      auditLogs: AuditLog[];
+      meta: { total: number; page: number; limit: number; totalPages: number };
+    }>
+  > {
+    const { page, limit, sortBy, order, userId, entity, entityId, action } =
+      query;
+
+    const queryBuilder = this.auditLogRepository.createQueryBuilder('auditLog');
+
+    if (userId) {
+      queryBuilder.andWhere('auditLog.userId = :userId', { userId });
+    }
+
+    if (entity) {
+      queryBuilder.andWhere('auditLog.entity = :entity', { entity });
+    }
+
+    if (entityId) {
+      queryBuilder.andWhere('auditLog.entityId = :entityId', { entityId });
+    }
+
+    if (action) {
+      queryBuilder.andWhere('auditLog.action = :action', { action });
+    }
+
+    queryBuilder.orderBy(`auditLog.${sortBy}`, order);
+
+    queryBuilder.skip((page - 1) * limit);
+    queryBuilder.take(limit);
+
+    const [data, total] = await queryBuilder.getManyAndCount();
+
+    return successResponse('Audit Logs fetched successfully', {
+      auditLogs: data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} auditLog`;
-  }
+  async findOne(id: string): Promise<ApiResponse<AuditLog>> {
+    const auditLog = await this.auditLogRepository.findOne({
+      where: { id },
+    });
 
-  update(id: number, updateAuditLogDto: UpdateAuditLogDto) {
-    return `This action updates a #${id} auditLog`;
-  }
+    if (!auditLog) {
+      throw new NotFoundException(`Audit log with ID "${id}" not found.`);
+    }
 
-  remove(id: number) {
-    return `This action removes a #${id} auditLog`;
+    return successResponse('Audit Log retrieved successfully', auditLog);
   }
 }

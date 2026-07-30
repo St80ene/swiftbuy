@@ -1,7 +1,15 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  ParseUUIDPipe,
+  Query,
+} from '@nestjs/common';
 import { AuditLogsService } from './audit_logs.service';
 import { CreateAuditLogDto } from './dto/create-audit_log.dto';
-import { UpdateAuditLogDto } from './dto/update-audit_log.dto';
+import { AuditLogQueryDto } from './dto/auditlog_query.dto';
 
 @Controller('audit-logs')
 export class AuditLogsController {
@@ -13,22 +21,12 @@ export class AuditLogsController {
   }
 
   @Get()
-  findAll() {
-    return this.auditLogsService.findAll();
+  findAll(@Query() query: AuditLogQueryDto) {
+    return this.auditLogsService.findAll(query);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.auditLogsService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAuditLogDto: UpdateAuditLogDto) {
-    return this.auditLogsService.update(+id, updateAuditLogDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.auditLogsService.remove(+id);
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.auditLogsService.findOne(id);
   }
 }

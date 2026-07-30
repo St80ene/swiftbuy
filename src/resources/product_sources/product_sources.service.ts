@@ -11,6 +11,7 @@ import { CreateProductSourceDto } from './dto/create-product_source.dto';
 import { UpdateProductSourceDto } from './dto/update-product_source.dto';
 import { ApiResponse, successResponse } from '../../utils/response.utils';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { getPaginationOptions } from '../../utils/get_pagination_options.util';
 
 @Injectable()
 export class ProductSourcesService {
@@ -47,11 +48,15 @@ export class ProductSourcesService {
   async findAll(
     paginationQuery: PaginationQueryDto,
   ): Promise<ApiResponse<{ productSources: ProductSource[]; meta: any }>> {
-    const { page = 1, limit = 10 } = paginationQuery;
+    const {
+      page: pageNumber,
+      limit: limitNumber,
+      skip,
+    } = getPaginationOptions(paginationQuery);
 
     const findCondition: FindManyOptions = {
-      skip: (page - 1) * limit,
-      take: limit,
+      skip: skip,
+      take: limitNumber,
       order: { createdAt: 'DESC' },
     };
 
@@ -62,9 +67,9 @@ export class ProductSourcesService {
       productSources,
       meta: {
         total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
+        page: pageNumber,
+        limit: limitNumber,
+        totalPages: Math.ceil(total / limitNumber),
       },
     });
   }

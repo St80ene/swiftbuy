@@ -25,6 +25,7 @@ import {
 } from '../stocks/entities/stock.entity';
 import convertToIntegerBaseUnit from '../../utils/convertToBaseInteger';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { getPaginationOptions } from '../../utils/get_pagination_options.util';
 
 @Injectable()
 export class ProductsService {
@@ -113,10 +114,11 @@ export class ProductsService {
     paginationQuery: PaginationQueryDto,
   ): Promise<ApiResponse<{ products: Product[]; meta: any }>> {
     try {
-      const { page = 1, limit = 10 } = paginationQuery;
-      const pageNumber = Math.max(1, Number(page) || 1);
-      const limitNumber = Math.max(1, Number(limit) || 10);
-      const skip = (pageNumber - 1) * limitNumber;
+      const {
+        page: pageNumber,
+        limit: limitNumber,
+        skip,
+      } = getPaginationOptions(paginationQuery);
 
       const [products, totalItems] = await this.productRepository.findAndCount({
         take: limitNumber,

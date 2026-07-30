@@ -5,25 +5,7 @@ import {
   TableForeignKey,
   TableIndex,
 } from 'typeorm';
-
-export enum AuditLogAction {
-  CREATE = 'CREATE',
-  UPDATE = 'UPDATE',
-  DELETE = 'DELETE',
-  LOGIN = 'LOGIN',
-  LOGOUT = 'LOGOUT',
-  PASSWORD_RESET = 'PASSWORD_RESET',
-}
-
-export enum AuditLogEntity {
-  USER = 'USER',
-  PRODUCT = 'PRODUCT',
-  SUPPLIER = 'SUPPLIER',
-  STOCK = 'STOCK',
-  PURCHASE_ORDER = 'PURCHASE_ORDER',
-  PRODUCT_SOURCE = 'PRODUCT_SOURCE',
-  COMPANY = 'COMPANY',
-}
+import { AuditLogAction, AuditLogEntity } from '../enum/audit_log.enum';
 
 export class CreateAuditLogsTable1785347115824 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
