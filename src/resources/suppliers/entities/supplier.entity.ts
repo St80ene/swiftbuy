@@ -1,5 +1,6 @@
 import { ProductSource } from '../../product_sources/entities/product_source.entity';
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { PurchaseOrder } from '../../purchase_orders/entities/purchase_order.entity';
 
 @Entity({ name: 'suppliers' })
 export class Supplier {
@@ -17,4 +18,7 @@ export class Supplier {
 
   @OneToMany(() => ProductSource, (productSource) => productSource.supplier)
   productSources!: ProductSource[];
+
+  @OneToMany(() => PurchaseOrder, (po) => po.supplier)
+  purchaseOrders!: PurchaseOrder[];
 }

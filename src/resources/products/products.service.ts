@@ -26,6 +26,7 @@ import {
 import convertToIntegerBaseUnit from '../../utils/convertToBaseInteger';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { getPaginationOptions } from '../../utils/get_pagination_options.util';
+import { DashboardCard } from '../dashboard/dashboard.service';
 
 @Injectable()
 export class ProductsService {
@@ -318,5 +319,52 @@ export class ProductsService {
       console.error(`Error deleting product ${id}:`, error);
       throw new InternalServerErrorException('Failed to remove product.');
     }
+  }
+
+  async getInventoryHealth(): Promise<DashboardCard[]> {
+    const queryBuilder = this.productRepository.createQueryBuilder('product');
+
+    const result: Record<string, any> | undefined = await queryBuilder
+      .select('COUNT(product.id)', 'totalProducts')
+      .addSelect('COALESCE(SUM(product.stock_quantity), 0)', 'totalStock')
+      .addSelect(
+        'SUM(CASE WHEN product.stock_quantity <= product.reorder_level THEN 1 ELSE 0 END)',
+        'lowStock',
+      )
+      .addSelect(
+        'SUM(CASE WHEN product.stock_quantity = 0 THEN 1 ELSE 0 END)',
+        'outOfStock',
+      )
+      .addSelect(
+        'COALESCE(SUM(product.stock_quantity * product.cost_price), 0)',
+        'inventoryValue',
+      )
+      .getRawOne();
+
+    return [
+      {
+        id: 'products',
+        title: 'Products',
+        value: Number(result?.totalProducts),
+        severity: 'success',
+      },
+      {
+        id: 'stock',
+        title: 'Total Stock',
+        value: Number(result?.totalStock),
+        severity: 'success',
+      },
+      {
+        id: 'low-stock',
+        title: 'Low Stock',
+        value: Number(result?.lowStock),
+        severity: Number(result?.lowStock) > 0 ? 'warning' : 'success',
+        subtitle: 'Products below reorder level',
+        action: {
+          label: 'Create Purchase Requests',
+          url: '/purchase-orders/create',
+        },
+      },
+    ];
   }
 }

@@ -5,8 +5,11 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { PurchaseOrderItem } from './purchase_order_item.entity';
+import { Supplier } from '../../suppliers/entities/supplier.entity';
 
 export enum PurchaseOrderStatus {
   DRAFT = 'DRAFT',
@@ -14,6 +17,8 @@ export enum PurchaseOrderStatus {
   APPROVED = 'APPROVED',
   RECEIVED = 'RECEIVED',
   CANCELLED = 'CANCELLED',
+  PENDING_APPROVAL = 'PENDING_APPROVAL',
+  SENT_TO_SUPPLIER = 'SENT_TO_SUPPLIER',
 }
 
 @Entity('purchase_orders')
@@ -49,4 +54,10 @@ export class PurchaseOrder {
     cascade: true,
   })
   items!: PurchaseOrderItem[];
+
+  @ManyToOne(() => Supplier, {
+    onDelete: 'RESTRICT',
+  })
+  @JoinColumn({ name: 'supplier_id' })
+  supplier!: Supplier;
 }

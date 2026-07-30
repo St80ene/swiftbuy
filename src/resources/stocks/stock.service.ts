@@ -7,11 +7,17 @@ import {
 import { Product } from '../products/entities/product.entity';
 import { AdjustStockDto, MutationType, Stocks } from './entities/stock.entity';
 import { ApiResponse, successResponse } from '../../utils/response.utils';
-import { DataSource, FindOptionsWhere } from 'typeorm';
+import { DataSource, FindOptionsWhere, Repository } from 'typeorm';
+import { DashboardCard } from '../dashboard/dashboard.service';
+import { InjectRepository } from '@nestjs/typeorm';
 
 @Injectable()
-export class StockService {
-  constructor(private readonly dataSource: DataSource) {}
+export class StocksService {
+  constructor(
+    @InjectRepository(Product)
+    private readonly productRepository: Repository<Product>,
+    private readonly dataSource: DataSource,
+  ) {}
 
   /**
    * ─── ADJUST STOCK VIA ATOMIC LEDGER TRANSACTION ───
@@ -104,5 +110,45 @@ export class StockService {
       'Inventory historical timeline tracking logs compiled',
       logs,
     );
+  }
+
+  async getWarehouseMetrics(): Promise<DashboardCard[]> {
+    const result: Record<string, any> | undefined = await this.productRepository
+      .createQueryBuilder('product')
+      .select('COALESCE(SUM(product.stockQuantity), 0)', 'totalStock')
+      .addSelect(
+        'SUM(CASE WHEN product.stockQuantity <= product.reorderLevel THEN 1 ELSE 0 END)',
+        'lowStock',
+      )
+      .addSelect(
+        'SUM(CASE WHEN product.stockQuantity = 0 THEN 1 ELSE 0 END)',
+        'outOfStock',
+      )
+      .getRawOne<{
+        totalStock: string;
+        lowStock: string;
+        outOfStock: string;
+      }>();
+
+    return [
+      {
+        id: 'total-stock',
+        title: 'Total Stock',
+        value: Number(result?.totalStock),
+        severity: 'success',
+      },
+      {
+        id: 'low-stock',
+        title: 'Low Stock',
+        value: Number(result?.lowStock),
+        severity: Number(result?.lowStock) > 0 ? 'warning' : 'success',
+      },
+      {
+        id: 'out-of-stock',
+        title: 'Out of Stock',
+        value: Number(result?.outOfStock),
+        severity: Number(result?.outOfStock) > 0 ? 'danger' : 'success',
+      },
+    ];
   }
 }

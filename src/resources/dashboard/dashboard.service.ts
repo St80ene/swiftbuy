@@ -1,26 +1,74 @@
 import { Injectable } from '@nestjs/common';
-import { CreateDashboardDto } from './dto/create-dashboard.dto';
-import { UpdateDashboardDto } from './dto/update-dashboard.dto';
+import { ProductsService } from '../products/products.service';
+import { PurchaseOrdersService } from '../purchase_orders/purchase_orders.service';
+import { StocksService } from '../stocks/stock.service';
 
 @Injectable()
 export class DashboardService {
-  create(createDashboardDto: CreateDashboardDto) {
-    return 'This action adds a new dashboard';
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly purchaseOrdersService: PurchaseOrdersService,
+    private readonly stocksService: StocksService,
+  ) {}
+
+  async getDashboard() {
+    const [inventory, procurement, warehouse] = await Promise.all([
+      this.getInventoryHealth(),
+      this.getProcurementPipeline(),
+      this.getWarehouseOperations(),
+    ]);
+
+    return {
+      inventory,
+      procurement,
+      warehouse,
+    };
   }
 
-  findAll() {
-    return `This action returns all dashboard`;
+  async getInventoryHealth(): Promise<DashboardSection> {
+    return {
+      title: 'Inventory Health',
+      cards: await this.productsService.getInventoryHealth(),
+    };
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} dashboard`;
+  async getProcurementPipeline(): Promise<DashboardSection> {
+    return {
+      title: 'Procurement Pipeline',
+      cards: await this.purchaseOrdersService.getPurchaseOrderPipeline(),
+    };
   }
 
-  update(id: number, updateDashboardDto: UpdateDashboardDto) {
-    return `This action updates a #${id} dashboard`;
+  async getWarehouseOperations(): Promise<DashboardSection> {
+    return {
+      title: 'Warehouse Operations',
+      cards: await this.stocksService.getWarehouseMetrics(),
+    };
   }
+}
 
-  remove(id: number) {
-    return `This action removes a #${id} dashboard`;
-  }
+export interface DashboardSection {
+  title: string;
+  cards: DashboardCard[];
+}
+
+export interface DashboardCard {
+  id: string;
+
+  title: string;
+
+  value: number | string;
+
+  subtitle?: string;
+
+  severity?: 'success' | 'warning' | 'danger' | 'info';
+
+  icon?: string;
+
+  action?: DashboardAction;
+}
+
+export interface DashboardAction {
+  label: string;
+  url: string;
 }

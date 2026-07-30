@@ -19,6 +19,7 @@ import { Product } from '../products/entities/product.entity';
 import { ProductSource } from '../product_sources/entities/product_source.entity';
 import { ApiResponse, successResponse } from '../../utils/response.utils';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { DashboardCard } from '../dashboard/dashboard.service';
 
 @Injectable()
 export class PurchaseOrdersService {
@@ -262,6 +263,76 @@ export class PurchaseOrdersService {
         await this.purchaseOrderRepository.manager.save(newItemsToAdd);
       }
     }
+  }
+
+  async getPurchaseOrderPipeline(): Promise<DashboardCard[]> {
+    const result: Record<string, any> | undefined =
+      await this.purchaseOrderRepository
+        .createQueryBuilder('purchase_order')
+        .select(
+          'SUM(CASE WHEN purchase_order.status = :pending THEN 1 ELSE 0 END)',
+          'pendingApproval',
+        )
+        .addSelect(
+          'SUM(CASE WHEN purchase_order.status = :approved THEN 1 ELSE 0 END)',
+          'approved',
+        )
+        .addSelect(
+          'SUM(CASE WHEN purchase_order.status = :sent THEN 1 ELSE 0 END)',
+          'sentToSupplier',
+        )
+        .addSelect(
+          'SUM(CASE WHEN purchase_order.status = :received THEN 1 ELSE 0 END)',
+          'received',
+        )
+        .addSelect(
+          'COALESCE(SUM(purchase_order.total_estimated_cost), 0)',
+          'totalEstimatedCost',
+        )
+        .setParameters({
+          pending: PurchaseOrderStatus.PENDING_APPROVAL,
+          approved: PurchaseOrderStatus.APPROVED,
+          sent: PurchaseOrderStatus.SENT_TO_SUPPLIER,
+          received: PurchaseOrderStatus.RECEIVED,
+        })
+        .getRawOne<{
+          pendingApproval: string;
+          approved: string;
+          sentToSupplier: string;
+          received: string;
+          totalEstimatedCost: string;
+        }>();
+
+    return [
+      {
+        id: 'pending-approval',
+        title: 'Pending Approval',
+        value: Number(result?.pendingApproval),
+        severity: 'warning',
+      },
+      {
+        id: 'approved',
+        title: 'Approved Orders',
+        value: Number(result?.approved),
+        severity: 'success',
+      },
+      {
+        id: 'sent',
+        title: 'Sent to Supplier',
+        value: Number(result?.sentToSupplier),
+      },
+      {
+        id: 'received',
+        title: 'Received',
+        value: Number(result?.received),
+        severity: 'success',
+      },
+      {
+        id: 'estimated-cost',
+        title: 'Estimated Procurement Cost',
+        value: Number(result?.totalEstimatedCost),
+      },
+    ];
   }
 
   // CRON Task: Automatically create a new draft purchase order for each supplier if none exists based on stock replenishment needs
