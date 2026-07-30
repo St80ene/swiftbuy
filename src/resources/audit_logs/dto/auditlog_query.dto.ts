@@ -1,6 +1,15 @@
-import { IsEnum, IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsUUID,
+  Max,
+  Min,
+} from 'class-validator';
 import { AuditLogAction, AuditLogEntity } from '../../../enum/audit_log.enum';
 import { Type } from 'class-transformer';
+import { MaxObjectSize } from '../../../common/validators/max_object_size.validator';
 
 export enum AuditLogSortBy {
   CREATED_AT = 'createdAt',
@@ -33,6 +42,16 @@ export class AuditLogQueryDto {
   @IsOptional()
   @IsEnum(AuditLogAction)
   action?: AuditLogAction;
+
+  @IsOptional()
+  @IsObject()
+  @MaxObjectSize(100)
+  newValue?: Record<string, any>;
+
+  @IsOptional()
+  @IsObject()
+  @MaxObjectSize(100)
+  oldValue?: Record<string, any>;
 
   @IsOptional()
   @Type(() => Number)

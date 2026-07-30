@@ -30,13 +30,13 @@ export class AuditLog extends BaseEntity {
   entityId!: string;
 
   @Column({ name: 'old_value', type: 'json', nullable: true })
-  oldValue?: Record<string, any>;
+  oldValue?: Record<string, any> | null;
 
   @Column({ name: 'new_value', type: 'json', nullable: true })
-  newValue?: Record<string, any>;
+  newValue?: Record<string, any> | null;
 
   @Column({ name: 'metadata', type: 'json', nullable: true })
-  metadata?: Record<string, any>;
+  metadata?: Record<string, any> | null;
 
   @Column({
     name: 'created_at',

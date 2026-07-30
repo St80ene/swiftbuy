@@ -24,8 +24,18 @@ export class AuditLogsService {
       meta: { total: number; page: number; limit: number; totalPages: number };
     }>
   > {
-    const { page, limit, sortBy, order, userId, entity, entityId, action } =
-      query;
+    const {
+      page,
+      newValue,
+      oldValue,
+      limit,
+      sortBy,
+      order,
+      userId,
+      entity,
+      entityId,
+      action,
+    } = query;
 
     const queryBuilder = this.auditLogRepository.createQueryBuilder('auditLog');
 
@@ -43,6 +53,14 @@ export class AuditLogsService {
 
     if (action) {
       queryBuilder.andWhere('auditLog.action = :action', { action });
+    }
+
+    if (oldValue) {
+      queryBuilder.andWhere('auditLog.oldValue = :oldValue', { oldValue });
+    }
+
+    if (newValue) {
+      queryBuilder.andWhere('auditLog.newValue = :newValue', { newValue });
     }
 
     queryBuilder.orderBy(`auditLog.${sortBy}`, order);

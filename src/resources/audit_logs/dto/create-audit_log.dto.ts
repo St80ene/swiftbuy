@@ -18,15 +18,15 @@ export class CreateAuditLogDto {
   @IsOptional()
   @IsObject({ message: 'Old value must be an object' })
   @MaxObjectSize(50000)
-  oldValue?: Record<string, any>;
+  oldValue?: Record<string, any> | null;
 
   @IsOptional()
   @IsObject({ message: 'New value must be an object' })
   @MaxObjectSize(50000)
-  newValue?: Record<string, any>;
+  newValue?: Record<string, any> | null;
 
   @IsOptional()
   @IsObject({ message: 'Metadata must be an object' })
   @MaxObjectSize(50000)
-  metadata?: Record<string, any>;
+  metadata?: Record<string, any> | null;
 }

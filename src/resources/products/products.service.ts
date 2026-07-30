@@ -1,4 +1,6 @@
+import { AuditLogsService } from './../audit_logs/audit_logs.service';
 import {
+  Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -27,6 +29,8 @@ import convertToIntegerBaseUnit from '../../utils/convertToBaseInteger';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { getPaginationOptions } from '../../utils/get_pagination_options.util';
 import { DashboardCard } from '../dashboard/interfaces/initial_interface';
+import { CreateAuditLogDto } from '../audit_logs/dto/create-audit_log.dto';
+import { AuditLogAction, AuditLogEntity } from '../../enum/audit_log.enum';
 
 @Injectable()
 export class ProductsService {
@@ -35,6 +39,9 @@ export class ProductsService {
     private readonly productRepository: Repository<Product>,
     private readonly cloudinaryService: CloudinaryService,
     private readonly dataSource: DataSource,
+
+    @Inject(AuditLogsService)
+    private readonly auditLogService: AuditLogsService,
   ) {}
 
   /**
@@ -274,6 +281,30 @@ export class ProductsService {
       const updatedProduct = await queryRunner.manager.save(Product, product);
       await queryRunner.commitTransaction();
 
+      await this.auditLogService.create({
+        action: AuditLogAction.CREATE,
+        entity: AuditLogEntity.PRODUCT,
+        entityId: product.id,
+        oldValue: null,
+        newValue: product,
+      });
+
+      await this.auditLogService.create({
+        action: AuditLogAction.CREATE,
+        entity: AuditLogEntity.PRODUCT,
+        entityId: product.id,
+        oldValue: null,
+        newValue: product,
+        metadata: {
+          productName: product.name,
+          // sku: product.sku,
+          // companyId: product.companyId,
+          // supplierId: product.supplierId,
+          createdAt: new Date().toISOString(),
+          reason: 'User initiated creation',
+        },
+      });
+
       return successResponse('Product updated successfully', updatedProduct);
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -311,7 +342,23 @@ export class ProductsService {
       await this.productRepository.save(product);
 
       // 2. Perform TypeORM softRemove to preserve historical ledger logs
-      await this.productRepository.softRemove(product);
+      const deleted = await this.productRepository.softRemove(product);
+
+      // run audit log here
+      await this.auditLogService.create({
+        action: AuditLogAction.DELETE,
+        entity: AuditLogEntity.PRODUCT,
+        entityId: product.id,
+        oldValue: product,
+        newValue: deleted,
+        metadata: {
+          productName: product.name,
+          // companyId: product.companyId,
+          // supplierId: product.supplierId,
+          deletedAt: new Date().toISOString(),
+          reason: 'User initiated deletion',
+        },
+      });
 
       return successResponse('Product removed successfully', null);
     } catch (error) {
