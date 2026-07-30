@@ -19,7 +19,7 @@ import { Product } from '../products/entities/product.entity';
 import { ProductSource } from '../product_sources/entities/product_source.entity';
 import { ApiResponse, successResponse } from '../../utils/response.utils';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { DashboardCard } from '../dashboard/dashboard.service';
+import { DashboardCard } from '../dashboard/interfaces/initial_interface';
 
 @Injectable()
 export class PurchaseOrdersService {

@@ -8,8 +8,8 @@ import { Product } from '../products/entities/product.entity';
 import { AdjustStockDto, MutationType, Stocks } from './entities/stock.entity';
 import { ApiResponse, successResponse } from '../../utils/response.utils';
 import { DataSource, FindOptionsWhere, Repository } from 'typeorm';
-import { DashboardCard } from '../dashboard/dashboard.service';
 import { InjectRepository } from '@nestjs/typeorm';
+import { DashboardCard } from '../dashboard/interfaces/initial_interface';
 
 @Injectable()
 export class StocksService {

@@ -26,7 +26,7 @@ import {
 import convertToIntegerBaseUnit from '../../utils/convertToBaseInteger';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { getPaginationOptions } from '../../utils/get_pagination_options.util';
-import { DashboardCard } from '../dashboard/dashboard.service';
+import { DashboardCard } from '../dashboard/interfaces/initial_interface';
 
 @Injectable()
 export class ProductsService {

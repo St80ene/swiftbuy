@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ProductsService } from '../products/products.service';
 import { PurchaseOrdersService } from '../purchase_orders/purchase_orders.service';
 import { StocksService } from '../stocks/stock.service';
+import { DashboardSection } from './interfaces/initial_interface';
 
 @Injectable()
 export class DashboardService {
@@ -45,30 +46,4 @@ export class DashboardService {
       cards: await this.stocksService.getWarehouseMetrics(),
     };
   }
-}
-
-export interface DashboardSection {
-  title: string;
-  cards: DashboardCard[];
-}
-
-export interface DashboardCard {
-  id: string;
-
-  title: string;
-
-  value: number | string;
-
-  subtitle?: string;
-
-  severity?: 'success' | 'warning' | 'danger' | 'info';
-
-  icon?: string;
-
-  action?: DashboardAction;
-}
-
-export interface DashboardAction {
-  label: string;
-  url: string;
 }
