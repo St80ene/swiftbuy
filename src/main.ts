@@ -36,6 +36,7 @@ async function bootstrap() {
     new ValidationPipe({
       whitelist: true, // Strips away properties that don't belong in the DTO
       transform: true, // Auto-transforms strings to numbers/booleans based on DTO types
+      forbidNonWhitelisted: true,
     }),
   );
 

@@ -13,9 +13,5 @@ export class CompanySettingsEntity {
   @IsOptional()
   timezone?: string;
 
-  @IsBoolean()
-  @IsOptional()
-  allowSelfRegistration?: boolean;
-
   [key: string]: unknown; // Allow additional properties
 }
