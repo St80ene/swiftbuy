@@ -1,4 +1,3 @@
-import { IsString, IsOptional, IsBoolean } from 'class-validator';
 import {
   BaseEntity,
   Column,
@@ -9,24 +8,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { CloudinaryImage } from '../../../utils/helpers/cloudinary/cloudinary.service';
-
-export class CompanySettings {
-  @IsString()
-  @IsOptional()
-  themeColor?: string;
-
-  @IsBoolean()
-  @IsOptional()
-  enableNotifications?: boolean;
-
-  @IsString()
-  @IsOptional()
-  timezone?: string;
-
-  @IsBoolean()
-  @IsOptional()
-  allowSelfRegistration?: boolean;
-}
+import { CompanySettingsEntity } from './company_settings.entity';
 
 @Entity({ name: 'companies' })
 export class Company extends BaseEntity {
@@ -58,7 +40,7 @@ export class Company extends BaseEntity {
   // MySQL Optimized Settings Blob
   // Type is set to 'json' to fully comply with multi-version MySQL engines
   @Column({ type: 'json', nullable: true })
-  settings?: CompanySettings;
+  settings?: CompanySettingsEntity;
 
   @CreateDateColumn({
     type: 'datetime',

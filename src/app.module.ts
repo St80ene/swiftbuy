@@ -15,10 +15,10 @@ import { PurchaseOrdersModule } from './resources/purchase_orders/purchase_order
 import { SuppliersModule } from './resources/suppliers/suppliers.module';
 import { ProductSourcesModule } from './resources/product_sources/product_sources.module';
 import { ScheduleModule } from '@nestjs/schedule';
-import { AuditLogsModule } from './audit_logs/audit_logs.module';
+import { AuditLogsModule } from './resources/audit_logs/audit_logs.module';
 import { AuthModule } from './auth/auth.module';
-import { DashboardModule } from './dashboard/dashboard.module';
-import { ReportsModule } from './reports/reports.module';
+import { DashboardModule } from './resources/dashboard/dashboard.module';
+import { ReportsModule } from './resources/reports/reports.module';
 @Module({
   imports: [
     ConfigModule.forRoot({

@@ -5,7 +5,7 @@ import {
   IsObject,
   Length,
 } from 'class-validator';
-import { CompanySettings } from '../entities/company.entity';
+import { CompanySettingsEntity } from '../entities/company_settings.entity';
 import { CloudinaryImage } from '../../../utils/helpers/cloudinary/cloudinary.service';
 
 export class CreateCompanyDto {
@@ -28,5 +28,5 @@ export class CreateCompanyDto {
 
   @IsObject()
   @IsOptional()
-  settings?: CompanySettings;
+  settings?: CompanySettingsEntity;
 }

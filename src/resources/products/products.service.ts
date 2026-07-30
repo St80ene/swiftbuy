@@ -1,4 +1,6 @@
+import { AuditLogsService } from './../audit_logs/audit_logs.service';
 import {
+  Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -25,6 +27,9 @@ import {
 } from '../stocks/entities/stock.entity';
 import convertToIntegerBaseUnit from '../../utils/convertToBaseInteger';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { getPaginationOptions } from '../../utils/get_pagination_options.util';
+import { DashboardCard } from '../dashboard/interfaces/initial_interface';
+import { AuditLogAction, AuditLogEntity } from '../../enum/audit_log.enum';
 
 @Injectable()
 export class ProductsService {
@@ -33,6 +38,9 @@ export class ProductsService {
     private readonly productRepository: Repository<Product>,
     private readonly cloudinaryService: CloudinaryService,
     private readonly dataSource: DataSource,
+
+    @Inject(AuditLogsService)
+    private readonly auditLogService: AuditLogsService,
   ) {}
 
   /**
@@ -113,10 +121,11 @@ export class ProductsService {
     paginationQuery: PaginationQueryDto,
   ): Promise<ApiResponse<{ products: Product[]; meta: any }>> {
     try {
-      const { page = 1, limit = 10 } = paginationQuery;
-      const pageNumber = Math.max(1, Number(page) || 1);
-      const limitNumber = Math.max(1, Number(limit) || 10);
-      const skip = (pageNumber - 1) * limitNumber;
+      const {
+        page: pageNumber,
+        limit: limitNumber,
+        skip,
+      } = getPaginationOptions(paginationQuery);
 
       const [products, totalItems] = await this.productRepository.findAndCount({
         take: limitNumber,
@@ -271,6 +280,30 @@ export class ProductsService {
       const updatedProduct = await queryRunner.manager.save(Product, product);
       await queryRunner.commitTransaction();
 
+      await this.auditLogService.create({
+        action: AuditLogAction.CREATE,
+        entity: AuditLogEntity.PRODUCT,
+        entityId: product.id,
+        oldValue: null,
+        newValue: product,
+      });
+
+      await this.auditLogService.create({
+        action: AuditLogAction.CREATE,
+        entity: AuditLogEntity.PRODUCT,
+        entityId: product.id,
+        oldValue: null,
+        newValue: product,
+        metadata: {
+          productName: product.name,
+          // sku: product.sku,
+          // companyId: product.companyId,
+          // supplierId: product.supplierId,
+          createdAt: new Date().toISOString(),
+          reason: 'User initiated creation',
+        },
+      });
+
       return successResponse('Product updated successfully', updatedProduct);
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -308,7 +341,23 @@ export class ProductsService {
       await this.productRepository.save(product);
 
       // 2. Perform TypeORM softRemove to preserve historical ledger logs
-      await this.productRepository.softRemove(product);
+      const deleted = await this.productRepository.softRemove(product);
+
+      // run audit log here
+      await this.auditLogService.create({
+        action: AuditLogAction.DELETE,
+        entity: AuditLogEntity.PRODUCT,
+        entityId: product.id,
+        oldValue: product,
+        newValue: deleted,
+        metadata: {
+          productName: product.name,
+          // companyId: product.companyId,
+          // supplierId: product.supplierId,
+          deletedAt: new Date().toISOString(),
+          reason: 'User initiated deletion',
+        },
+      });
 
       return successResponse('Product removed successfully', null);
     } catch (error) {
@@ -316,5 +365,52 @@ export class ProductsService {
       console.error(`Error deleting product ${id}:`, error);
       throw new InternalServerErrorException('Failed to remove product.');
     }
+  }
+
+  async getInventoryHealth(): Promise<DashboardCard[]> {
+    const queryBuilder = this.productRepository.createQueryBuilder('product');
+
+    const result: Record<string, any> | undefined = await queryBuilder
+      .select('COUNT(product.id)', 'totalProducts')
+      .addSelect('COALESCE(SUM(product.stock_quantity), 0)', 'totalStock')
+      .addSelect(
+        'SUM(CASE WHEN product.stock_quantity <= product.reorder_level THEN 1 ELSE 0 END)',
+        'lowStock',
+      )
+      .addSelect(
+        'SUM(CASE WHEN product.stock_quantity = 0 THEN 1 ELSE 0 END)',
+        'outOfStock',
+      )
+      .addSelect(
+        'COALESCE(SUM(product.stock_quantity * product.cost_price), 0)',
+        'inventoryValue',
+      )
+      .getRawOne();
+
+    return [
+      {
+        id: 'products',
+        title: 'Products',
+        value: Number(result?.totalProducts),
+        severity: 'success',
+      },
+      {
+        id: 'stock',
+        title: 'Total Stock',
+        value: Number(result?.totalStock),
+        severity: 'success',
+      },
+      {
+        id: 'low-stock',
+        title: 'Low Stock',
+        value: Number(result?.lowStock),
+        severity: Number(result?.lowStock) > 0 ? 'warning' : 'success',
+        subtitle: 'Products below reorder level',
+        action: {
+          label: 'Create Purchase Requests',
+          url: '/purchase-orders/create',
+        },
+      },
+    ];
   }
 }
