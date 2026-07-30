@@ -29,7 +29,6 @@ import convertToIntegerBaseUnit from '../../utils/convertToBaseInteger';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { getPaginationOptions } from '../../utils/get_pagination_options.util';
 import { DashboardCard } from '../dashboard/interfaces/initial_interface';
-import { CreateAuditLogDto } from '../audit_logs/dto/create-audit_log.dto';
 import { AuditLogAction, AuditLogEntity } from '../../enum/audit_log.enum';
 
 @Injectable()
