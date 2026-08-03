@@ -1,26 +1,80 @@
 import { Injectable } from '@nestjs/common';
-import { CreateReportDto } from './dto/create-report.dto';
-import { UpdateReportDto } from './dto/update-report.dto';
 
 @Injectable()
 export class ReportsService {
-  create(createReportDto: CreateReportDto) {
-    return 'This action adds a new report';
-  }
+  /**
+   * Dashboard
+   */
+  getDashboardMetrics() {}
 
-  findAll() {
-    return `This action returns all reports`;
-  }
+  /**
+   * Inventory
+   */
+  getInventoryOverview() {}
 
-  findOne(id: number) {
-    return `This action returns a #${id} report`;
-  }
+  getStockMovementReport() {}
 
-  update(id: number, updateReportDto: UpdateReportDto) {
-    return `This action updates a #${id} report`;
-  }
+  getLowStockReport() {}
 
-  remove(id: number) {
-    return `This action removes a #${id} report`;
-  }
+  getOutOfStockReport() {}
+
+  getInventoryValuationReport() {}
+
+  getTopMovingProducts() {}
+
+  getSlowMovingProducts() {}
+
+  /**
+   * Purchase Orders
+   */
+  getPurchaseOrderSummary() {}
+
+  getPurchaseOrderPipeline() {}
+
+  getPurchaseOrderTrend() {}
+
+  getLatePurchaseOrders() {}
+
+  /**
+   * Suppliers
+   */
+  getSupplierPerformance() {}
+
+  getSupplierRatings() {}
+
+  getTopSuppliers() {}
+
+  getSupplierSpendAnalysis() {}
+
+  /**
+   * Financial
+   */
+  getProcurementSpend() {}
+
+  getMonthlySpendTrend() {}
+
+  getAveragePurchaseCost() {}
+
+  getCostSavings() {}
+
+  /**
+   * Company
+   */
+  getCompanyOverview() {}
+
+  /**
+   * Audit
+   */
+  getAuditSummary() {}
+
+  getRecentActivities() {}
+
+  /**
+   * Exports
+   */
+  exportInventoryReport() {}
+
+  exportSupplierReport() {}
+
+  exportPurchaseOrderReport() {}
 }
