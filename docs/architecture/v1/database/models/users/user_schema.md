@@ -338,6 +338,7 @@ The database should enforce:
 6. `is_email_verified` defaults to `false`.
 7. `created_at` must always exist.
 8. `updated_at` must always exist.
+9. `deleted_at` must always exist.
 
 ---
 
