@@ -158,12 +158,11 @@ The `users` table represents people who interact with SwiftBuy.
 users
 -----
 id
-business_id
-role_id
-name
+first_name
+last_name
 email
-password
-status
+role_id
+is_email_verified
 created_at
 updated_at
 ```
