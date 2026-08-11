@@ -50,6 +50,10 @@ Stock In
 
 ↓
 
+Adjustment
+
+↓
+
 Stock Out
 
 ↓
