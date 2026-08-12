@@ -2,11 +2,15 @@ import {
   BaseEntity,
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
+import { Role } from '../../../auth/entities/role.entity';
 
 export enum UserRole {
   ADMIN = 'ADMIN',
@@ -145,10 +149,23 @@ export class User extends BaseEntity {
   })
   createdAt!: Date;
 
+  @ManyToOne(() => Role, (role) => role.users, {
+    onDelete: 'CASCADE',
+    eager: true,
+  })
+  @JoinColumn({ name: 'role_id' })
+  role!: Role;
+
   @UpdateDateColumn({
     type: 'datetime',
     default: () => 'CURRENT_TIMESTAMP',
     onUpdate: 'CURRENT_TIMESTAMP',
   })
   updatedAt!: Date;
+
+  @DeleteDateColumn({
+    type: 'datetime',
+    nullable: true,
+  })
+  deletedAt?: Date | null;
 }
