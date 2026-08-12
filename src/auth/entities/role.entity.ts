@@ -2,6 +2,13 @@ import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { User } from '../../resources/users/entities/user.entity';
 import { RolePermissions } from './role_permissions.entity';
 
+export enum UserRole {
+  ADMIN = 'ADMIN',
+  MANAGER = 'MANAGER',
+  STOREMAN = 'STOREMAN',
+  CASHIER = 'CASHIER',
+  SUPER_ADMIN = 'SUPER_ADMIN',
+}
 @Entity({ name: 'role' })
 export class Role {
   constructor(props?: Partial<Role>) {
@@ -13,8 +20,8 @@ export class Role {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ type: 'varchar', length: 100, unique: true })
-  name!: string;
+  @Column({ type: 'enum', enum: UserRole, unique: true })
+  name!: UserRole;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   description?: string;
