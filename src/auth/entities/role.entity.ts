@@ -29,8 +29,9 @@ export class Role {
   @OneToMany(() => User, (user) => user.role)
   users!: User[];
 
+  // It should be optional at the time of role creation, as permissions can be added later.
   @OneToMany(() => RolePermissions, (rolePermission) => rolePermission.role)
-  rolePermissions!: RolePermissions[];
+  rolePermissions?: RolePermissions[];
 
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   createdAt!: Date;
