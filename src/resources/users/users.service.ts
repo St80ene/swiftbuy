@@ -8,11 +8,13 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User, UserRole } from './entities/user.entity';
+import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
 import { ApiResponse, successResponse } from '../../utils/response.utils';
+import { UserRole } from '../../auth/entities/role.entity';
+import { UserAuth } from '../../auth/entities/user_auth.entity';
 
 export interface JwtUser {
   id: string;
@@ -23,7 +25,9 @@ export interface JwtUser {
 export class UsersService {
   constructor(
     @InjectRepository(User)
+    @InjectRepository(UserAuth)
     private readonly userRepository: Repository<User>,
+    private readonly userAuthRepository: Repository<UserAuth>,
   ) {}
 
   /**
@@ -36,6 +40,7 @@ export class UsersService {
     const exists = await this.userRepository.findOne({
       where: { email: createUserDto.email },
     });
+
     if (exists) {
       throw new ConflictException('Email already registered.');
     }
@@ -54,12 +59,15 @@ export class UsersService {
 
     const user = this.userRepository.create({
       ...createUserDto,
+      role_id: createUserDto.role || UserRole.STOREMAN,
+    });
+
+    await this.userAuthRepository.save({
+      user_id: user.id, // Associate the UserAuth with the newly created User
       password: hashedPassword,
     });
 
     const saved = await this.userRepository.save(user);
-
-    delete saved.password;
 
     return successResponse('User added successfully', saved);
   }

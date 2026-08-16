@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { LoginDto } from './dto/login.dto';
 import { AuditLogAction, AuditLogEntity } from '../enum/audit_log.enum';
 import { AuditLogsService } from '../resources/audit_logs/audit_logs.service';
@@ -9,8 +13,13 @@ import { UserAuth } from './entities/user_auth.entity';
 import { randomBytes } from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { BadRequestException } from '@nestjs/common';
-import { ResetPasswordDto } from './dto/reset-password.dto';
-import { ChangePasswordDto } from './dto/change-password.dto';
+import {
+  ResetPasswordDto,
+  ChangePasswordDto,
+  ForgotPasswordDto,
+} from './dto/password.dto';
+import { JwtService } from '@nestjs/jwt';
+import { addMinutes } from 'date-fns';
 
 @Injectable()
 export class AuthService {
@@ -20,11 +29,35 @@ export class AuthService {
     @InjectRepository(UserAuth)
     private readonly userAuthRepository: Repository<UserAuth>,
     private readonly auditLogService: AuditLogsService,
+    private jwtService: JwtService,
   ) {}
+
   async login({ email, password }: LoginDto) {
     const user = await this.validateCredentials(email, password);
 
-    const tokens = await this.generateTokens(user);
+    if (!user) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    const { accessToken, refreshToken } = await this.generateTokens(user);
+
+    const auth = await this.userAuthRepository.findOneBy({
+      user_id: user.id,
+    });
+
+    if (!auth) {
+      throw new Error('UserAuth record not found for user');
+    }
+
+    const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
+
+    if (!hashedRefreshToken) {
+      throw new Error('Failed to hash refresh token');
+    }
+
+    auth['refresh_token'] = hashedRefreshToken;
+
+    await this.userAuthRepository.save(auth);
 
     await this.auditLogService.create({
       action: AuditLogAction.LOGIN,
@@ -34,7 +67,8 @@ export class AuthService {
 
     return {
       user,
-      ...tokens,
+      refreshToken,
+      accessToken,
     };
   }
 
@@ -57,7 +91,7 @@ export class AuthService {
     };
   }
 
-  async forgotPassword(email: string) {
+  async forgotPassword({ email }: ForgotPasswordDto) {
     const user = await this.userRepository.findOne({
       where: { email },
     });
@@ -75,10 +109,10 @@ export class AuthService {
     const token = randomBytes(32).toString('hex');
 
     if (!auth) {
-      const newAuth = this.userAuthRepository.save({
+      const newAuth = this.userAuthRepository.create({
         user_id: user.id,
         password_reset_token: await bcrypt.hash(token, 10),
-        password_reset_expires_at: new Date(), 30),
+        password_reset_expires_at: new Date(),
       });
 
       await this.userAuthRepository.save(newAuth);
@@ -125,7 +159,10 @@ export class AuthService {
     )
       throw new BadRequestException('Invalid or expired token');
 
-    const valid = await bcrypt.compare(dto.token, auth.password_reset_token);
+    const valid = await bcrypt.compare(
+      dto.token,
+      auth.password_reset_token as string,
+    );
 
     if (!valid) throw new BadRequestException();
 
@@ -143,16 +180,31 @@ export class AuthService {
   }
 
   async changePassword(userId: string, dto: ChangePasswordDto) {
-    const auth = await this.userAuthRepository.findOne({
-      where: { userId },
-      select: ['password'],
+    const { currentPassword, newPassword } = dto;
+    const auth: UserAuth | null = await this.userAuthRepository.findOne({
+      where: { user_id: userId },
+      select: {
+        password: true,
+      },
     });
 
-    const valid = await argon2.verify(auth.password, dto.oldPassword);
+    if (!auth) throw new UnauthorizedException('User not found');
 
-    if (!valid) throw new UnauthorizedException();
+    if (currentPassword === newPassword) {
+      throw new BadRequestException(
+        'New password cannot be the same as the current password',
+      );
+    }
 
-    auth.password = await argon2.hash(dto.newPassword);
+    const valid = await bcrypt.compare(
+      currentPassword,
+      auth.password as string,
+    );
+
+    if (!valid)
+      throw new UnauthorizedException('Current password is incorrect');
+
+    auth.password = await bcrypt.hash(dto.newPassword, 10);
 
     auth.refresh_token = null;
 
@@ -164,33 +216,43 @@ export class AuthService {
   }
 
   async refresh(refreshToken: string) {
-    const payload = await this.jwtService.verifyAsync(refreshToken);
+    const payload: Record<string, any> =
+      await this.jwtService.verifyAsync(refreshToken);
 
     const auth = await this.userAuthRepository.findOne({
       where: {
-        userId: payload.sub,
+        user_id: payload?.sub as string,
       },
-      select: ['refresh_token'],
+      select: {
+        refresh_token: true,
+      },
     });
 
-    if (!auth || !(await argon2.verify(auth.refresh_token, refreshToken)))
-      throw new UnauthorizedException();
+    if (!auth) throw new UnauthorizedException();
 
     const user = await this.userRepository.findOneBy({
-      id: payload.sub,
+      id: payload?.sub as string,
     });
+
+    if (!user) throw new UnauthorizedException();
 
     return this.generateTokens(user);
   }
 
   async me(userId: string) {
     return this.userRepository.findOne({
-      where: {
-        id: userId,
-      },
+      where: { id: userId },
       relations: {
+        role: { rolePermissions: true },
+      },
+      select: {
+        id: true,
+        email: true,
         role: {
-          permissions: true,
+          id: true,
+          name: true,
+          description: true,
+          rolePermissions: true,
         },
       },
     });
@@ -213,7 +275,11 @@ export class AuthService {
       where: {
         user_id: user.id,
       },
-      select: ['password', 'failed_login_attempts', 'locked_until'],
+      select: {
+        password: true,
+        failed_login_attempts: true,
+        locked_until: true,
+      },
     });
 
     if (!auth) throw new UnauthorizedException();
@@ -222,12 +288,14 @@ export class AuthService {
       throw new ForbiddenException('Account temporarily locked');
     }
 
-    const valid = await argon2.verify(auth.password, password);
+    const valid = await bcrypt.compare(password, auth.password as string);
 
     if (!valid) {
-      auth.failed_login_attempts++;
+      auth.failed_login_attempts = auth.failed_login_attempts
+        ? auth.failed_login_attempts + 1
+        : 1;
 
-      if (auth.failed_login_attempts >= 5) {
+      if (auth?.failed_login_attempts >= 5) {
         auth.locked_until = addMinutes(new Date(), 15);
       }
 
@@ -248,7 +316,7 @@ export class AuthService {
   private async generateTokens(user: User) {
     const payload = {
       sub: user.id,
-      roleId: user.roleId,
+      role_id: user.role_id,
       email: user.email,
     };
 
@@ -256,17 +324,17 @@ export class AuthService {
       expiresIn: '15m',
     });
 
-    const refreshToken = await this.jwtService.signAsync(payload, {
+    if (!accessToken) {
+      throw new Error('Failed to generate access token');
+    }
+
+    const refreshToken: string = await this.jwtService.signAsync(payload, {
       expiresIn: '7d',
     });
 
-    const auth = await this.userAuthRepository.findOneBy({
-      user_id: user.id,
-    });
-
-    auth.refresh_token = await argon2.hash(refreshToken);
-
-    await this.userAuthRepository.save(auth);
+    if (!refreshToken) {
+      throw new Error('Failed to generate refresh token');
+    }
 
     return {
       accessToken,
@@ -274,7 +342,3 @@ export class AuthService {
     };
   }
 }
-function addMinutes(arg0: Date, arg1: number): any {
-  throw new Error('Function not implemented.');
-}
-

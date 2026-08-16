@@ -12,11 +12,13 @@ export class RolesGuard implements CanActivate {
       ROLES_KEY,
       [context.getHandler(), context.getClass()],
     );
+
     if (!requiredRoles) {
       return true;
     }
 
-    /** Get the user from the request
+    /*
+     * Get the user from the request
      * @param context The execution context of the request
      * @return boolean Returns true if the user has the required roles, false otherwise
      */
