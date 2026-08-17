@@ -1,5 +1,6 @@
 import {
   ForbiddenException,
+  Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -9,7 +10,6 @@ import { AuditLogsService } from '../resources/audit_logs/audit_logs.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../resources/users/entities/user.entity';
 import { Repository } from 'typeorm';
-import { UserAuth } from './entities/user_auth.entity';
 import { randomBytes } from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { BadRequestException } from '@nestjs/common';
@@ -20,16 +20,21 @@ import {
 } from './dto/password.dto';
 import { JwtService } from '@nestjs/jwt';
 import { addMinutes } from 'date-fns';
+import { UserAuth } from './entities/user_auth.entity';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+
     @InjectRepository(UserAuth)
     private readonly userAuthRepository: Repository<UserAuth>,
+
+    @Inject(AuditLogsService)
     private readonly auditLogService: AuditLogsService,
-    private jwtService: JwtService,
+
+    private readonly jwtService: JwtService,
   ) {}
 
   async login({ email, password }: LoginDto) {

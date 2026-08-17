@@ -40,5 +40,10 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsUUID()
-  role_id?: string;
+  role_id!: string;
+}
+
+export class ChangeUserRoleDto {
+  @IsUUID()
+  role_id!: string;
 }

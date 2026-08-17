@@ -11,7 +11,7 @@ import { CreateProductSourceDto } from './dto/create-product_source.dto';
 import { UpdateProductSourceDto } from './dto/update-product_source.dto';
 import { ApiResponse, successResponse } from '../../utils/response.utils';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
-import { getPaginationOptions } from '../../utils/get_pagination_options.util';
+import { getPaginationOptions } from '../../utils/helpers/get_pagination_options.util';
 
 @Injectable()
 export class ProductSourcesService {

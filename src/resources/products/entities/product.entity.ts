@@ -34,13 +34,6 @@ export enum UomDisplayName {
 
 @Entity({ name: 'products' })
 export class Product extends BaseEntity {
-  constructor(props?: Partial<Product>) {
-    super();
-    if (props) {
-      Object.assign(this, props);
-    }
-  }
-
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

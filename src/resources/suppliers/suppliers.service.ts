@@ -6,10 +6,9 @@ import {
 } from '@nestjs/common';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
 import { UpdateSupplierDto } from './dto/update-supplier.dto';
-import { DashboardCard } from '../dashboard/dashboard.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { getPaginationOptions } from '../../utils/get_pagination_options.util';
+import { getPaginationOptions } from '../../utils/helpers/get_pagination_options.util';
 import { ApiResponse, successResponse } from '../../utils/response.utils';
 import { ProductSource } from '../product_sources/entities/product_source.entity';
 import { Product } from '../products/entities/product.entity';
@@ -20,6 +19,7 @@ import {
 import { Supplier } from './entities/supplier.entity';
 import { SupplierQueryDto } from './dto/supplier-query.dto';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { DashboardCard } from '../dashboard/interfaces/initial_interface';
 
 @Injectable()
 export class SuppliersService {
@@ -160,36 +160,6 @@ export class SuppliersService {
     return successResponse('Supplier deleted successfully');
   }
 
-  async getSupplierProducts(
-    supplierId: string,
-    query: PaginationQueryDto,
-  ): Promise<ApiResponse<any>> {
-    await this.getSupplierOrThrow(supplierId);
-
-    const { page, limit, skip } = getPaginationOptions(query);
-
-    const qb = this.productRepository
-      .createQueryBuilder('product')
-      .innerJoin('product.source', 'source')
-      .where('source.supplier_id = :supplierId', {
-        supplierId,
-      });
-
-    qb.skip(skip).take(limit);
-
-    const [products, total] = await qb.getManyAndCount();
-
-    return successResponse('Supplier products retrieved successfully', {
-      products,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    });
-  }
-
   async search(search: string) {
     return this.supplierRepository
       .createQueryBuilder('supplier')
@@ -201,7 +171,7 @@ export class SuppliersService {
       .getMany();
   }
 
-  private async getSupplierOrThrow(id: string): Promise<Supplier> {
+  async getSupplierOrThrow(id: string): Promise<Supplier> {
     const supplier = await this.supplierRepository.findOne({
       where: { id },
     });

@@ -1,4 +1,3 @@
-// src/users/users.controller.ts
 import {
   Controller,
   Get,
@@ -12,11 +11,10 @@ import {
   ParseIntPipe,
   Query,
   Request,
-  Req,
 } from '@nestjs/common';
 import { UserRole } from '../../auth/entities/role.entity';
 import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
+import { ChangeUserRoleDto, CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Roles } from '../../decorators/roles.decorator';
 import { AuthGuard } from '@nestjs/passport';
@@ -29,8 +27,8 @@ export class UsersController {
   @Post()
   @UseGuards(AuthGuard('jwt'))
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
-  create(@Req() req: Request, @Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto, req.user);
+  create(@Request() req: Request, @Body() createUserDto: CreateUserDto) {
+    return this.usersService.create(createUserDto, req['user']);
   }
 
   @Get()
@@ -44,15 +42,27 @@ export class UsersController {
   @Patch(':id')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   update(
+    @Request() req: Request,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateUserDto: UpdateUserDto,
   ) {
-    return this.usersService.update(id, updateUserDto);
+    return this.usersService.update(id, updateUserDto, req['user']);
+  }
+
+  @Patch(':id/role')
+  @Roles(UserRole.SUPER_ADMIN)
+  changeRole(
+    @Request() req: Request,
+    @Param('id') id: string,
+    @Body() dto: ChangeUserRoleDto,
+    // @CurrentUser() currentUser: JwtUser,
+  ) {
+    return this.usersService.changeRole(id, dto, req['user']);
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.usersService.remove(id);
+  @Roles(UserRole.SUPER_ADMIN)
+  remove(@Request() req: Request, @Param('id', ParseUUIDPipe) id: string) {
+    return this.usersService.remove(id, req['user']);
   }
 }
