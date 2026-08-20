@@ -1,4 +1,4 @@
-import { DataSourceOptions } from 'typeorm';
+import { DataSource, DataSourceOptions } from 'typeorm';
 import * as dotenv from 'dotenv';
 import { z } from 'zod';
 
@@ -65,3 +65,6 @@ export const mySqLDataSourceOptions: DataSourceOptions = {
     idleTimeout: env.DB_IDLE_TIMEOUT,
   },
 };
+
+const AppDataSource = new DataSource(mySqLDataSourceOptions);
+export default AppDataSource;
