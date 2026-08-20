@@ -12,21 +12,19 @@ import {
   Query,
   Request,
 } from '@nestjs/common';
-import { UserRole } from '../../auth/entities/role.entity';
 import { UsersService } from './users.service';
 import { ChangeUserRoleDto, CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Roles } from '../../decorators/roles.decorator';
-import { AuthGuard } from '@nestjs/passport';
-import { UseGuards } from '@nestjs/common';
+import { UserRole } from '../../enum/user_role.enum';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  @UseGuards(AuthGuard('jwt'))
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  // @UseGuards(AuthGuard('jwt'))
+  // @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   create(@Request() req: Request, @Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto, req['user']);
   }
@@ -40,7 +38,7 @@ export class UsersController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  // @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   update(
     @Request() req: Request,
     @Param('id', ParseUUIDPipe) id: string,
@@ -49,8 +47,8 @@ export class UsersController {
     return this.usersService.update(id, updateUserDto, req['user']);
   }
 
-  @Patch(':id/role')
-  @Roles(UserRole.SUPER_ADMIN)
+  // @Patch(':id/role')
+  // @Roles(UserRole.SUPER_ADMIN)
   changeRole(
     @Request() req: Request,
     @Param('id') id: string,

@@ -6,7 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { mySqLDataSourceOptions } from './database/config/appDataSource';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { CompaniesModule } from './resources/companies/companies.module';
+import { BusinessesModule } from './resources/business/business.module';
 import { StocksModule } from './resources/stocks/stock.module';
 import { UsersModule } from './resources/users/users.module';
 import { ProductsModule } from './resources/products/products.module';
@@ -35,7 +35,7 @@ import { ReportsModule } from './resources/reports/reports.module';
       autoLoadEntities: true,
     }),
     ProductsModule,
-    CompaniesModule,
+    BusinessesModule,
     UsersModule,
     StocksModule,
     CloudinaryModule,

@@ -7,7 +7,7 @@ import {
   UomDisplayName,
   UomType,
 } from './entities/product.entity';
-import { mockCloudinaryService } from '../companies/companies.service.spec';
+import { mockCloudinaryService } from '../business/business.service.spec';
 import { CloudinaryService } from '../../utils/helpers/cloudinary/cloudinary.service';
 import { DataSource } from 'typeorm';
 import {

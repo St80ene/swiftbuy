@@ -1,15 +1,16 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  Unique,
+} from 'typeorm';
 import { User } from '../../resources/users/entities/user.entity';
 import { RolePermissions } from './role_permissions.entity';
+import { UserRole } from '../../enum/user_role.enum';
 
-export enum UserRole {
-  ADMIN = 'ADMIN',
-  MANAGER = 'MANAGER',
-  STOREMAN = 'STOREMAN',
-  CASHIER = 'CASHIER',
-  SUPER_ADMIN = 'SUPER_ADMIN',
-}
-@Entity({ name: 'role' })
+@Entity({ name: 'roles' })
+@Unique(['name'])
 export class Role {
   constructor(props?: Partial<Role>) {
     if (props) {

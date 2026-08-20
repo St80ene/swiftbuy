@@ -1,6 +1,6 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
-@Entity({ name: 'permission' })
+@Entity({ name: 'permissions' })
 export class Permission {
   constructor(props?: Partial<Permission>) {
     if (props) {

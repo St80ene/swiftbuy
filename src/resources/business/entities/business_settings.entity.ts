@@ -1,6 +1,6 @@
 import { IsString, IsOptional, IsBoolean } from 'class-validator';
 
-export class CompanySettingsEntity {
+export class BusinessSettingsEntity {
   @IsString()
   @IsOptional()
   themeColor?: string;

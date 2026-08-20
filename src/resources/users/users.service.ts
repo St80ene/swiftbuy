@@ -11,7 +11,8 @@ import { User } from './entities/user.entity';
 import { ChangeUserRoleDto, CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ApiResponse, successResponse } from '../../utils/response.utils';
-import { Role, UserRole } from '../../auth/entities/role.entity';
+import { Role } from '../../auth/entities/role.entity';
+import { UserRole } from '../../enum/user_role.enum';
 
 export interface JwtUser {
   id: string;
@@ -102,11 +103,14 @@ export class UsersService {
       const limitNumber = Math.max(1, Number(limit) || 10);
       const skip = (pageNumber - 1) * limitNumber;
 
+      console.log('gotten here first');
       const [users, totalItems] = await this.userRepository.findAndCount({
         take: limitNumber,
         skip: skip,
         order: { createdAt: 'DESC' },
       });
+
+      console.log('gotten here');
 
       return successResponse('Users listed successfully', {
         users,
@@ -121,6 +125,8 @@ export class UsersService {
         },
       });
     } catch (error) {
+      console.log('Error fetching users:', error);
+
       throw new InternalServerErrorException('Failed to fetch users.');
     }
   }
