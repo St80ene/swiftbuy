@@ -5,10 +5,10 @@ import {
   IsObject,
   Length,
 } from 'class-validator';
-import { CompanySettingsEntity } from '../entities/company_settings.entity';
+import { BusinessSettingsEntity } from '../entities/business_settings.entity';
 import { CloudinaryImage } from '../../../utils/helpers/cloudinary/cloudinary.service';
 
-export class CreateCompanyDto {
+export class CreateBusinessDto {
   @IsString()
   name!: string;
 
@@ -28,5 +28,5 @@ export class CreateCompanyDto {
 
   @IsObject()
   @IsOptional()
-  settings?: CompanySettingsEntity;
+  settings?: BusinessSettingsEntity;
 }

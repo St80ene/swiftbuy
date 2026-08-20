@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { CompaniesService } from './companies.service';
-import { Company } from './entities/company.entity';
-import { CreateCompanyDto } from './dto/create-company.dto';
+import { CompaniesService } from './business.service';
+import { Company } from './entities/business.entity';
+import { CreateCompanyDto } from './dto/create-business.dto';
 import { NotFoundException } from '@nestjs/common';
 import { CloudinaryService } from '../../utils/helpers/cloudinary/cloudinary.service';
 

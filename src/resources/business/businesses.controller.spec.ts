@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { CompaniesController } from './companies.controller';
-import { CompaniesService } from './companies.service';
-import { CreateCompanyDto } from './dto/create-company.dto';
-import { UpdateCompanyDto } from './dto/update-company.dto';
+import { CompaniesController } from './business.controller';
+import { CompaniesService } from './business.service';
+import { CreateCompanyDto } from './dto/create-business.dto';
+import { UpdateCompanyDto } from './dto/update-business.dto';
 import {
   NotFoundException,
   BadRequestException,

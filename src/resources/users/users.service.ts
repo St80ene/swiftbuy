@@ -1,4 +1,3 @@
-// src/users/users.service.ts
 import {
   Injectable,
   NotFoundException,
@@ -8,11 +7,12 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User, UserRole } from './entities/user.entity';
-import { CreateUserDto } from './dto/create-user.dto';
+import { User } from './entities/user.entity';
+import { ChangeUserRoleDto, CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import * as bcrypt from 'bcrypt';
 import { ApiResponse, successResponse } from '../../utils/response.utils';
+import { Role } from '../../auth/entities/role.entity';
+import { UserRole } from '../../enum/user_role.enum';
 
 export interface JwtUser {
   id: string;
@@ -24,25 +24,48 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Role)
+    private readonly roleRepository: Repository<Role>,
   ) {}
 
   /**
    * ─── CREATE USER ───
    */
+
+  /**
+   * @param createUserDto - Data Transfer Object containing user creation details
+   * @param currentUser - The currently authenticated user making the request
+   * @returns ApiResponse containing the created User or null
+   * @throws ConflictException if the email is already registered
+   * @throws ForbiddenException if a non-SUPER_ADMIN tries to create a SUPER_ADMIN
+   * @throws InternalServerErrorException if there is an error during user creation
+   * @remarks This method checks for existing users, validates roles, and saves the new user to the database. It ensures that only authorized users can create certain roles.
+   * @example
+   * const createUserDto: CreateUserDto = {
+   *   first_name: 'John',
+   *   last_name: 'Doe',
+   *   email: 'example@example.com',
+   *   role_id: 'role-id'
+   * };
+   */
   async create(
     createUserDto: CreateUserDto,
     currentUser: JwtUser,
-  ): Promise<ApiResponse<User>> {
+  ): Promise<ApiResponse<User | null>> {
+    // Check if the email already exists in the database
     const exists = await this.userRepository.findOne({
       where: { email: createUserDto.email },
     });
+
     if (exists) {
       throw new ConflictException('Email already registered.');
     }
 
+    const desired_role = await this.findUserRole(createUserDto.role_id);
+
     // Only SUPER_ADMIN can create another SUPER_ADMIN
     if (
-      createUserDto.role === UserRole.SUPER_ADMIN &&
+      desired_role.name === UserRole.SUPER_ADMIN &&
       currentUser.role !== UserRole.SUPER_ADMIN
     ) {
       throw new ForbiddenException(
@@ -50,18 +73,19 @@ export class UsersService {
       );
     }
 
-    const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
-
     const user = this.userRepository.create({
       ...createUserDto,
-      password: hashedPassword,
+      role_id: createUserDto.role_id,
     });
 
-    const saved = await this.userRepository.save(user);
+    // await this.userAuthRepository.save({
+    //   user_id: user.id, // Associate the UserAuth with the newly created User
+    //   password: hashedPassword,
+    // });
 
-    delete saved.password;
+    await this.userRepository.save(user);
 
-    return successResponse('User added successfully', saved);
+    return successResponse('User added successfully', null);
   }
 
   /**
@@ -79,11 +103,14 @@ export class UsersService {
       const limitNumber = Math.max(1, Number(limit) || 10);
       const skip = (pageNumber - 1) * limitNumber;
 
+      console.log('gotten here first');
       const [users, totalItems] = await this.userRepository.findAndCount({
         take: limitNumber,
         skip: skip,
         order: { createdAt: 'DESC' },
       });
+
+      console.log('gotten here');
 
       return successResponse('Users listed successfully', {
         users,
@@ -98,7 +125,8 @@ export class UsersService {
         },
       });
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.log('Error fetching users:', error);
+
       throw new InternalServerErrorException('Failed to fetch users.');
     }
   }
@@ -109,15 +137,14 @@ export class UsersService {
   async update(id: string, dto: UpdateUserDto, currentUser: JwtUser) {
     const user = await this.findUser(id);
 
-    // Normal users can only update themselves
-    if (currentUser.role === UserRole.USER && currentUser.id !== id) {
+    if (currentUser.id !== id) {
       throw new ForbiddenException();
     }
 
     // Only Super Admin can change roles
-    if (dto.role && currentUser.role !== UserRole.SUPER_ADMIN) {
-      throw new ForbiddenException('Only Super Admin can change user roles.');
-    }
+    // if (dto.role_id && currentUser.role !== UserRole.SUPER_ADMIN) {
+    //   throw new ForbiddenException('Only Super Admin can change user roles.');
+    // }
 
     this.userRepository.merge(user, dto);
 
@@ -129,10 +156,11 @@ export class UsersService {
   private async findUser(id: string): Promise<User> {
     const user = await this.userRepository.findOne({
       where: { id },
+      relations: { role: true },
     });
 
     if (!user) {
-      throw new NotFoundException('User record not found.');
+      throw new NotFoundException('User record not found');
     }
 
     return user;
@@ -144,26 +172,60 @@ export class UsersService {
   async remove(id: string, currentUser: JwtUser) {
     const user = await this.findUser(id);
 
-    // Users cannot delete anyone
-    if (currentUser.role === UserRole.USER) {
-      throw new ForbiddenException();
+    if (user.id === currentUser.id) {
+      throw new ForbiddenException('You cannot delete your own account.');
     }
 
-    // Admin cannot delete another admin
-    if (currentUser.role === UserRole.ADMIN && user.role === UserRole.ADMIN) {
-      throw new ForbiddenException('Admins cannot delete other admins.');
-    }
-
-    // Nobody except Super Admin can delete Super Admin
-    if (
-      user.role === UserRole.SUPER_ADMIN &&
-      currentUser.role !== UserRole.SUPER_ADMIN
-    ) {
-      throw new ForbiddenException();
+    if (user.role?.name === UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException('A Super Admin cannot be deleted.');
     }
 
     await this.userRepository.softRemove(user);
 
     return successResponse('User deleted successfully', null);
+  }
+
+  async changeRole(id: string, dto: ChangeUserRoleDto, currentUser: JwtUser) {
+    const user = await this.findUser(id);
+
+    const newRole = await this.findUserRole(dto.role_id);
+
+    /**
+     * Prevent accidental removal of the last
+     * Super Admin.
+     */
+    if (
+      user.role?.name === UserRole.SUPER_ADMIN &&
+      newRole.name !== UserRole.SUPER_ADMIN
+    ) {
+      const superAdminCount = await this.userRepository.count({
+        where: {
+          role_id: user.role_id,
+        },
+      });
+
+      if (superAdminCount <= 1) {
+        throw new ForbiddenException('The last Super Admin cannot be demoted.');
+      }
+    }
+
+    user.role_id = newRole.id;
+
+    await this.userRepository.save(user);
+
+    return successResponse('User role updated successfully', user);
+  }
+
+  private async findUserRole(id: string): Promise<Role> {
+    // call role service to fetch the required role from database
+    const desired_role = await this.roleRepository.findOne({
+      where: { id },
+    });
+
+    if (!desired_role) {
+      throw new NotFoundException('Role not found.');
+    }
+
+    return desired_role;
   }
 }

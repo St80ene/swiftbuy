@@ -1,4 +1,12 @@
-import { IsEmail, IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsString,
+  IsStrongPassword,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
+import { passwordOptions } from './password.dto';
 
 export class LoginDto {
   @IsNotEmpty()
@@ -8,6 +16,7 @@ export class LoginDto {
 
   @IsNotEmpty()
   @IsString()
-  @MaxLength(128)
+  @MinLength(50)
+  @IsStrongPassword(passwordOptions)
   password!: string;
 }

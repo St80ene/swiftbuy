@@ -3,11 +3,11 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { dataSourceOptions } from './database/config/appDataSource';
+import { mySqLDataSourceOptions } from './database/config/appDataSource';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { CompaniesModule } from './resources/companies/companies.module';
-import { StockModule } from './resources/stocks/stock.module';
+import { BusinessesModule } from './resources/business/business.module';
+import { StocksModule } from './resources/stocks/stock.module';
 import { UsersModule } from './resources/users/users.module';
 import { ProductsModule } from './resources/products/products.module';
 import { CloudinaryModule } from './utils/helpers/cloudinary/cloudinary.module';
@@ -31,13 +31,13 @@ import { ReportsModule } from './resources/reports/reports.module';
       },
     ]),
     TypeOrmModule.forRoot({
-      ...dataSourceOptions,
+      ...mySqLDataSourceOptions,
       autoLoadEntities: true,
     }),
     ProductsModule,
-    CompaniesModule,
+    BusinessesModule,
     UsersModule,
-    StockModule,
+    StocksModule,
     CloudinaryModule,
     PurchaseOrdersModule,
     ProductSourcesModule,

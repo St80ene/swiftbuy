@@ -1,4 +1,4 @@
-import { UomDisplayName } from '../resources/products/entities/product.entity';
+import { UomDisplayName } from '../../../resources/products/entities/product.entity';
 
 function convertToIntegerBaseUnit(
   quantity: number,

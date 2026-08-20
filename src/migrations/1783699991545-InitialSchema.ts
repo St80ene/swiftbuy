@@ -54,7 +54,7 @@ export class InitialSchema1783699991545 implements MigrationInterface {
     );
 
     await queryRunner.query(
-      `CREATE TABLE \`companies\` (
+      `CREATE TABLE \`business\` (
         \`id\` varchar(36) NOT NULL, 
         \`name\` varchar(255) NOT NULL, 
         \`email\` varchar(255) NOT NULL, 
@@ -73,9 +73,9 @@ export class InitialSchema1783699991545 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `DROP INDEX \`IDX_d0af6f5866201d5cb424767744\` ON \`companies\``,
+      `DROP INDEX \`IDX_d0af6f5866201d5cb424767744\` ON \`business\``,
     );
-    await queryRunner.query(`DROP TABLE \`companies\``);
+    await queryRunner.query(`DROP TABLE \`business\``);
     await queryRunner.query(
       `DROP INDEX \`IDX_97672ac88f789774dd47f7c8be\` ON \`users\``,
     );

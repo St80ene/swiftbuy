@@ -3,11 +3,6 @@ import { AuditLogAction, AuditLogEntity } from '../../../enum/audit_log.enum';
 
 @Entity('audit_logs')
 export class AuditLog extends BaseEntity {
-  constructor(props: Partial<AuditLog>) {
-    super();
-    Object.assign(this, props);
-  }
-
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

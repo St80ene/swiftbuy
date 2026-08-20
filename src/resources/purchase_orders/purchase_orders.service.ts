@@ -19,6 +19,8 @@ import { Product } from '../products/entities/product.entity';
 import { ProductSource } from '../product_sources/entities/product_source.entity';
 import { ApiResponse, successResponse } from '../../utils/response.utils';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { getPaginationOptions } from '../../utils/helpers/get_pagination_options.util';
+import { SuppliersService } from '../suppliers/suppliers.service';
 import { DashboardCard } from '../dashboard/interfaces/initial_interface';
 
 @Injectable()
@@ -26,11 +28,16 @@ export class PurchaseOrdersService {
   constructor(
     @InjectRepository(PurchaseOrder)
     private readonly purchaseOrderRepository: Repository<PurchaseOrder>,
+
     private readonly dataSource: DataSource,
+
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
+
     @InjectRepository(ProductSource)
     private readonly productSourceRepository: Repository<ProductSource>,
+
+    private readonly supplierService: SuppliersService,
   ) {}
 
   // CREATE: Generate a new Purchase Order with nested items
@@ -333,6 +340,36 @@ export class PurchaseOrdersService {
         value: Number(result?.totalEstimatedCost),
       },
     ];
+  }
+
+  async getSupplierProducts(
+    supplierId: string,
+    query: PaginationQueryDto,
+  ): Promise<ApiResponse<any>> {
+    await this.supplierService.getSupplierOrThrow(supplierId);
+
+    const { page, limit, skip } = getPaginationOptions(query);
+
+    const qb = this.productRepository
+      .createQueryBuilder('product')
+      .innerJoin('product.source', 'source')
+      .where('source.supplier_id = :supplierId', {
+        supplierId,
+      });
+
+    qb.skip(skip).take(limit);
+
+    const [products, total] = await qb.getManyAndCount();
+
+    return successResponse('Supplier products retrieved successfully', {
+      products,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   }
 
   // CRON Task: Automatically create a new draft purchase order for each supplier if none exists based on stock replenishment needs

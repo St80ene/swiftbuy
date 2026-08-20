@@ -8,11 +8,11 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { CloudinaryImage } from '../../../utils/helpers/cloudinary/cloudinary.service';
-import { CompanySettingsEntity } from './company_settings.entity';
+import { BusinessSettingsEntity } from './business_settings.entity';
 
-@Entity({ name: 'companies' })
-export class Company extends BaseEntity {
-  constructor(props?: Partial<Company>) {
+@Entity({ name: 'businesses' })
+export class Business extends BaseEntity {
+  constructor(props?: Partial<Business>) {
     super();
     if (props) {
       Object.assign(this, props);
@@ -40,7 +40,7 @@ export class Company extends BaseEntity {
   // MySQL Optimized Settings Blob
   // Type is set to 'json' to fully comply with multi-version MySQL engines
   @Column({ type: 'json', nullable: true })
-  settings?: CompanySettingsEntity;
+  settings?: BusinessSettingsEntity;
 
   @CreateDateColumn({
     type: 'datetime',
