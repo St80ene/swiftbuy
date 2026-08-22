@@ -1,7 +1,7 @@
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { mySqLDataSourceOptions } from './database/config/appDataSource';
 import { APP_GUARD } from '@nestjs/core';
@@ -19,6 +19,8 @@ import { AuditLogsModule } from './resources/audit_logs/audit_logs.module';
 import { AuthModule } from './auth/auth.module';
 import { DashboardModule } from './resources/dashboard/dashboard.module';
 import { ReportsModule } from './resources/reports/reports.module';
+import { DataSource } from 'typeorm';
+import { getDatabaseConfig } from './database/config/getDatabaseConfig';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -26,13 +28,18 @@ import { ReportsModule } from './resources/reports/reports.module';
     }),
     ThrottlerModule.forRoot([
       {
-        ttl: 60000, // Time-to-live window in milliseconds (e.g., 1 minute)
-        limit: 100, // Maximum requests allowed per IP within the ttl window
+        ttl: 60, // Time-to-live window in seconds (e.g., 1 minute)
+        limit: 10, // Maximum requests allowed per IP within the ttl window
       },
     ]),
-    TypeOrmModule.forRoot({
-      ...mySqLDataSourceOptions,
-      autoLoadEntities: true,
+
+    // ─── GLOBAL TYPEORM CONFIGURATION ───
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        return getDatabaseConfig(configService);
+      },
     }),
     ProductsModule,
     BusinessesModule,
@@ -57,4 +64,28 @@ import { ReportsModule } from './resources/reports/reports.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule {
+  private readonly logger = new Logger('DatabaseCheck');
+
+  constructor(private readonly dataSource: DataSource) {}
+
+  onModuleInit() {
+    if (this.dataSource.isInitialized) {
+      const driverType = this.dataSource.options.type;
+      const dbName = this.dataSource.options.database;
+      const registeredEntities = this.dataSource.entityMetadatas.length;
+
+      const dbNameStr =
+        dbName instanceof Uint8Array
+          ? new TextDecoder().decode(dbName)
+          : (dbName ?? 'None').toString();
+
+      this.logger.log(`✅ Database Connected Successfully!`);
+      this.logger.log(` Driver Type: ${driverType}`);
+      this.logger.log(` Database:    ${dbNameStr}`);
+      this.logger.log(` Entities:    ${registeredEntities} loaded`);
+    } else {
+      this.logger.error(`❌ Database Connection Failed to Initialize.`);
+    }
+  }
+}

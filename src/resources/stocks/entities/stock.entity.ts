@@ -1,4 +1,5 @@
-import { IsUUID, IsNotEmpty, IsEnum, IsInt, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsUUID, IsNotEmpty, IsEnum, Min, IsNumber } from 'class-validator';
 import {
   BaseEntity,
   Column,
@@ -84,7 +85,9 @@ export class AdjustStockDto {
   @IsNotEmpty()
   reason!: MutationReason; // e.g., STOLEN, DAMAGED, AUDIT_CORRECTION
 
-  @IsInt()
+  @IsNumber()
+  @Min(1, { message: 'Quantity level must be at least 1.' })
+  @Type(() => Number)
   @Min(1)
   quantity!: number; // The amount being changed
 }

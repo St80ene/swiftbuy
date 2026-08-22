@@ -45,6 +45,9 @@ export class ProductsService {
 
   /**
    * ─── CREATE PRODUCT WITH AUDIT LEDGER ───
+   * @param createProductDto
+   * @param files
+   * @returns ApiResponse<Product>
    */
   async create(
     createProductDto: CreateProductDto,
@@ -54,34 +57,32 @@ export class ProductsService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
-    try {
-      let productImages: CloudinaryImage[] = [];
+    const productImages: CloudinaryImage[] = [];
 
+    try {
+      // 1. Concurrent Image Upload Tracking
       if (files && files.length > 0) {
         const uploadPromises = files.map((file) =>
           this.cloudinaryService.uploadProductImage(file, 'products'),
         );
-        productImages = await Promise.all(uploadPromises);
+        const uploadedResults = await Promise.all(uploadPromises);
+        productImages.push(...uploadedResults);
       }
-
-      // Convert incoming human stock quantity to integer base units (e.g. 1.5kg -> 1500g)
-      const initialStockBase = convertToIntegerBaseUnit(
-        createProductDto.stock_quantity,
-        createProductDto.uom_display_name,
-      );
 
       const reorderLevelBase = convertToIntegerBaseUnit(
         createProductDto.reorder_level || 5,
         createProductDto.uom_display_name,
       );
 
-      // 2. Build the core product record
+      // 3. Explicit Property Mapping (Mitigates Mass Assignment Risks)
       const product = queryRunner.manager.create(Product, {
-        ...createProductDto,
-        images: productImages,
-        stock_quantity: initialStockBase,
+        name: createProductDto.name,
+        description: createProductDto.description ?? '',
+        selling_price: createProductDto.selling_price,
+        cost_price: createProductDto.cost_price,
+        ...(productImages.length > 0 && { images: productImages }),
         reorder_level: reorderLevelBase,
-        is_low_stock: initialStockBase <= reorderLevelBase,
+        is_low_stock: 0 <= reorderLevelBase,
         uom_type: createProductDto.uom_type,
         uom_base_name: createProductDto.uom_base_name,
         uom_display_name: createProductDto.uom_display_name,
@@ -89,24 +90,32 @@ export class ProductsService {
 
       const savedProduct = await queryRunner.manager.save(Product, product);
 
-      // 3. Complete Ledger Trace Allocation (Real-World Audit Pattern)
+      // 4. Ledger Entry Creation
       const mutation = queryRunner.manager.create(Stocks, {
         product_id: savedProduct.id,
         type: MutationType.INFLOW,
-        reason:
-          initialStockBase > 0
-            ? MutationReason.SUPPLIER_RESTOCK
-            : MutationReason.NEW_PRODUCT_INITIALIZATION,
-        quantity: initialStockBase, // Guarded as safe base integer
+        reason: MutationReason.NEW_PRODUCT_INITIALIZATION,
+        quantity: 0,
         unit_cost_price: savedProduct.cost_price,
         unit_selling_price: savedProduct.selling_price,
       });
+
       await queryRunner.manager.save(Stocks, mutation);
 
       await queryRunner.commitTransaction();
       return successResponse('Product created successfully', savedProduct);
     } catch (error) {
       await queryRunner.rollbackTransaction();
+
+      // Cleanup: Purge remote Cloudinary assets on DB failure
+      if (productImages.length > 0) {
+        await Promise.all(
+          productImages.map((img) =>
+            this.cloudinaryService.deleteImage(img.publicId).catch(() => null),
+          ),
+        );
+      }
+
       console.error('Error creating product:', error);
       throw new InternalServerErrorException('Failed to create product.');
     } finally {
@@ -231,31 +240,6 @@ export class ProductsService {
       const currentUomDisplayName =
         updateProductDto.uom_display_name || product.uom_display_name;
 
-      if (updateProductDto.stock_quantity !== undefined) {
-        // Convert updated human quantity input to base unit scale matching target UOM
-        const newStockBase = convertToIntegerBaseUnit(
-          updateProductDto.stock_quantity,
-          currentUomDisplayName,
-        );
-
-        if (newStockBase !== product.stock_quantity) {
-          const difference = newStockBase - product.stock_quantity;
-
-          const mutation = queryRunner.manager.create(Stocks, {
-            product_id: product.id,
-            type: difference > 0 ? MutationType.INFLOW : MutationType.OUTFLOW,
-            reason: MutationReason.AUDIT_CORRECTION,
-            quantity: Math.abs(difference), // Saved as absolute integer base value
-            unit_cost_price: updateProductDto.cost_price ?? product.cost_price,
-            unit_selling_price:
-              updateProductDto.selling_price ?? product.selling_price,
-          });
-
-          await queryRunner.manager.save(Stocks, mutation);
-          product.stock_quantity = newStockBase;
-        }
-      }
-
       // Recalculate dynamic flags based on the base unit updates
       if (updateProductDto.reorder_level !== undefined) {
         product.reorder_level = convertToIntegerBaseUnit(
@@ -263,7 +247,10 @@ export class ProductsService {
           currentUomDisplayName,
         );
       }
-      product.is_low_stock = product.stock_quantity <= product.reorder_level;
+
+      // check for product?.stock_quantity is above 0 or you assign default value as 0
+      if (product?.stock_quantity)
+        product.is_low_stock = product?.stock_quantity <= product.reorder_level;
 
       // 3. Save adjustments safely via queryRunner manager
       queryRunner.manager.merge(Product, product, {
@@ -271,7 +258,6 @@ export class ProductsService {
         description: updateProductDto.description,
         cost_price: updateProductDto.cost_price,
         selling_price: updateProductDto.selling_price,
-        category: updateProductDto.category,
         uom_type: updateProductDto.uom_type as UomType,
         uom_base_name: updateProductDto.uom_base_name as UomBaseName,
         uom_display_name: updateProductDto.uom_display_name as UomDisplayName,

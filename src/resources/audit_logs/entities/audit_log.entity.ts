@@ -1,4 +1,10 @@
-import { BaseEntity, Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import {
+  BaseEntity,
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+} from 'typeorm';
 import { AuditLogAction, AuditLogEntity } from '../../../enum/audit_log.enum';
 
 @Entity('audit_logs')
@@ -33,9 +39,8 @@ export class AuditLog extends BaseEntity {
   @Column({ name: 'metadata', type: 'json', nullable: true })
   metadata?: Record<string, any> | null;
 
-  @Column({
-    name: 'created_at',
-    type: 'timestamp',
+  @CreateDateColumn({
+    type: 'datetime',
     default: () => 'CURRENT_TIMESTAMP',
   })
   createdAt!: Date;

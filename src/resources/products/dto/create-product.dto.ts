@@ -34,29 +34,15 @@ export class CreateProductDto {
   @Type(() => Number) // cost_price to match the schema for profit margins
   cost_price!: number;
 
-  @IsNumber()
-  @Min(0, { message: 'Stock quantity cannot be negative.' })
-  @Type(() => Number)
-  stock_quantity!: number;
-
-  @IsNumber()
-  @Min(0, { message: 'Low stock threshold cannot be negative.' })
   @IsOptional()
-  @Type(() => Number)
-  is_low_stock?: number;
+  @IsArray()
+  @IsString({ each: true })
+  images?: string[];
 
   @IsNumber()
   @Min(5, { message: 'Reorder level must be at least 5.' })
   @Type(() => Number)
   reorder_level!: number;
-
-  @IsString()
-  category!: string;
-
-  @IsArray()
-  @IsString({ each: true })
-  @IsOptional()
-  images?: string[];
 
   // Unit of Measure (UOM) fields
   @IsEnum(UomType, {
