@@ -1,10 +1,16 @@
 import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
-import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
+import {
+  ClassSerializerInterceptor,
+  Logger,
+  ValidationPipe,
+} from '@nestjs/common';
 import helmet from 'helmet';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { createLoggerConfig } from './common/logger/logger.config';
+import { DataSource } from 'typeorm';
+import { InitialSeeding1785451531000 } from './database/seeders/initial_seeding.seed';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -13,6 +19,28 @@ async function bootstrap() {
   // Retrieve ConfigService instance
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT') || 3000;
+
+  const logger = new Logger('SeedingInit');
+
+  try {
+    const dataSource = app.get(DataSource);
+    const queryRunner = dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    logger.log('🚀 Running database seeding...');
+
+    const seeder = new InitialSeeding1785451531000();
+    await seeder.up(queryRunner);
+
+    await queryRunner.release();
+    logger.log('✅ Database seeding completed successfully!');
+  } catch (error) {
+    logger.error('❌ Database seeding failed: ' + (error.message || error));
+    if (error.query) {
+      logger.error('Failed Query: ' + error.query);
+    }
+    process.exitCode = 1;
+  }
 
   app.enableCors({
     origin: '*',
