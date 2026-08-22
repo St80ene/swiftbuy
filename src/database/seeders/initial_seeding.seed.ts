@@ -156,28 +156,37 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
     const productRepository = queryRunner.manager.getRepository(Product);
     const stockRepository = queryRunner.manager.getRepository(Stocks);
 
+    const generateStockQuantity = (): number => {
+      return faker.helpers.weightedArrayElement([
+        { value: 0, weight: 10 }, // 10% out of stock
+        {
+          value: faker.number.int({ min: 1, max: 10 }),
+          weight: 15,
+        },
+        {
+          value: faker.number.int({ min: 11, max: 50 }),
+          weight: 25,
+        },
+        {
+          value: faker.number.int({ min: 51, max: 500 }),
+          weight: 50,
+        },
+      ]);
+    };
+
     const generateProductSeed = () => {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const uomType = faker.helpers.arrayElement([
         UomType.UNIT,
         UomType.WEIGHT,
         UomType.VOLUME,
       ]);
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-      const stockQuantity = faker.number.int({
-        min: 0,
-        max: 500,
-      });
-
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       const reorderLevel = faker.number.int({
         min: 5,
         max: 50,
       });
 
       const costPrice = Number(
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
         faker.commerce.price({
           min: 5,
           max: 500,
@@ -186,7 +195,6 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
       );
 
       const sellingPrice = Number(
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
         faker.commerce.price({
           min: costPrice * 1.2,
           max: costPrice * 2,
@@ -211,17 +219,12 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
               };
 
       return {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
         name: faker.commerce.productName(),
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
         description: faker.commerce.productDescription(),
         cost_price: costPrice,
         selling_price: sellingPrice,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        stock_quantity: stockQuantity,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        stock_quantity: generateStockQuantity(),
         reorder_level: reorderLevel,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         uom_type: uomType,
         ...uomConfig,
         images: [],
@@ -231,7 +234,12 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
     const productSeeds = Array.from({ length: 100 }, generateProductSeed);
 
     if (productSeeds.length > 0) {
-      // 1. Map seeds using your exact service creation rules
+      /**
+       * Create products.
+       *
+       * Stock quantity is deliberately NOT passed here because
+       * stock management owns the product's stock quantity.
+       */
       const productEntities = productSeeds.map((seed) => {
         const reorderLevelBase = convertToIntegerBaseUnit(
           seed.reorder_level,
@@ -243,25 +251,38 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
           description: seed.description,
           selling_price: seed.selling_price,
           cost_price: seed.cost_price,
-          images: [],
+          images: seed.images,
           reorder_level: reorderLevelBase,
-          is_low_stock: 0 <= reorderLevelBase, // Initial quantity is 0
+
+          // Initial quantity will be determined by stock management.
+          is_low_stock: false,
+
           uom_type: seed.uom_type,
           uom_base_name: seed.uom_base_name,
           uom_display_name: seed.uom_display_name,
         });
       });
 
-      // 2. Bulk save products in a single database roundtrip
+      /**
+       * Bulk save products.
+       */
       const savedProducts = await productRepository.save(productEntities);
 
-      // 3. Bulk map and save corresponding zero-quantity ledger entries
-      const stockMutations = savedProducts.map((product) =>
+      /**
+       * Create the initial stock mutations.
+       *
+       * The index keeps each generated stock quantity associated
+       * with the corresponding saved product.
+       */
+      const stockMutations = savedProducts.map((product, index) =>
         stockRepository.create({
           product_id: product.id,
           type: MutationType.INFLOW,
           reason: MutationReason.NEW_PRODUCT_INITIALIZATION,
-          quantity: 0,
+
+          // Each product gets its own random quantity.
+          quantity: productSeeds[index].stock_quantity,
+
           unit_cost_price: product.cost_price,
           unit_selling_price: product.selling_price,
         }),

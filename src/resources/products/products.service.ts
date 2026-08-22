@@ -125,6 +125,8 @@ export class ProductsService {
 
   /**
    * ─── FIND ALL ───
+   *
+   *
    */
   async findAll(
     paginationQuery: PaginationQueryDto,
@@ -136,12 +138,32 @@ export class ProductsService {
         skip,
       } = getPaginationOptions(paginationQuery);
 
-      const [products, totalItems] = await this.productRepository.findAndCount({
-        take: limitNumber,
-        skip: skip,
-        order: { createdAt: 'DESC' },
-        where: { deletedAt: IsNull() },
-      });
+      const { search } = paginationQuery;
+
+      const queryBuilder = this.productRepository
+        .createQueryBuilder('product')
+        .where('product.deletedAt IS NULL');
+
+      if (search) {
+        queryBuilder.andWhere(
+          `
+          (
+            LOWER(product.name) LIKE LOWER(:search)
+            OR LOWER(product.description) LIKE LOWER(:search)
+          )
+        `,
+          {
+            search: `%${search}%`,
+          },
+        );
+      }
+
+      queryBuilder
+        .orderBy('product.createdAt', 'DESC')
+        .skip(skip)
+        .take(limitNumber);
+
+      const [products, totalItems] = await queryBuilder.getManyAndCount();
 
       const totalPages = Math.ceil(totalItems / limitNumber);
 
@@ -159,6 +181,7 @@ export class ProductsService {
       });
     } catch (error) {
       console.error('Error fetching products catalog:', error);
+
       throw new InternalServerErrorException(
         'Error fetching products collection.',
       );
