@@ -55,9 +55,6 @@ export class Product extends BaseEntity {
   @Column('decimal', { precision: 10, scale: 2 })
   selling_price!: number;
 
-  @Column({ type: 'varchar', nullable: true, default: '' })
-  category?: string;
-
   @Column({ type: 'tinyint', default: 0 })
   is_low_stock!: boolean;
 

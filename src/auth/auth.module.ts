@@ -10,10 +10,20 @@ import { jwtConstants } from './constants';
 import { UserAuth } from './entities/user_auth.entity';
 import { AuditLog } from '../resources/audit_logs/entities/audit_log.entity';
 import { AuditLogsModule } from '../resources/audit_logs/audit_logs.module';
+import { Role } from './entities/role.entity';
+import { RolePermissions } from './entities/role_permissions.entity';
+import { Permission } from './entities/permission.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, UserAuth, AuditLog]),
+    TypeOrmModule.forFeature([
+      User,
+      UserAuth,
+      AuditLog,
+      Role,
+      RolePermissions,
+      Permission,
+    ]),
     JwtModule.register({
       secret: jwtConstants.secret,
       global: true,

@@ -67,4 +67,5 @@ export const mySqLDataSourceOptions: DataSourceOptions = {
 };
 
 const AppDataSource = new DataSource(mySqLDataSourceOptions);
+
 export default AppDataSource;

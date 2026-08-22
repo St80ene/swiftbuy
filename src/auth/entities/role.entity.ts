@@ -8,6 +8,7 @@ import {
 import { User } from '../../resources/users/entities/user.entity';
 import { RolePermissions } from './role_permissions.entity';
 import { UserRole } from '../../enum/user_role.enum';
+import { IsEnum } from 'class-validator';
 
 @Entity({ name: 'roles' })
 @Unique(['name'])
@@ -21,7 +22,12 @@ export class Role {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ type: 'enum', enum: UserRole, unique: true })
+  @IsEnum(UserRole, { message: 'Invalid role name' })
+  @Column({
+    type: 'varchar',
+    length: 50,
+    default: UserRole.CASHIER,
+  })
   name!: UserRole;
 
   @Column({ type: 'varchar', length: 255, nullable: true })

@@ -95,6 +95,85 @@ export class StocksService {
     }
   }
 
+  async bulkAdjustStock(
+    dtoArray: AdjustStockDto[],
+  ): Promise<ApiResponse<Product[]>> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const updatedProducts: Product[] = [];
+
+      for (const dto of dtoArray) {
+        if (dto.quantity <= 0) {
+          throw new BadRequestException(
+            'Mutation quantity must be greater than zero.',
+          );
+        }
+
+        const product = await queryRunner.manager.findOne(Product, {
+          where: { id: dto.product_id },
+        });
+
+        if (!product) {
+          throw new NotFoundException(`Product not found.`);
+        }
+
+        const mutationQuantity = Number(dto.quantity);
+        if (
+          product.stock_quantity > 0 &&
+          dto.type === MutationType.OUTFLOW &&
+          product.stock_quantity < mutationQuantity
+        ) {
+          throw new BadRequestException(
+            `Available stock balance: ${product.stock_quantity}`,
+          );
+        }
+
+        // Update product current balance
+        if (dto.type === MutationType.INFLOW) {
+          product.stock_quantity += mutationQuantity;
+        } else {
+          product.stock_quantity -= mutationQuantity;
+        }
+        const updatedProduct = await queryRunner.manager.save(Product, product);
+        updatedProducts.push(updatedProduct);
+
+        // Record tracking ledger log
+        const mutation = queryRunner.manager.create(Stocks, {
+          product_id: product.id,
+          type: dto.type,
+          reason: dto.reason,
+          quantity: mutationQuantity,
+          unit_cost_price: product.cost_price,
+          unit_selling_price: product.selling_price,
+        });
+
+        await queryRunner.manager.save(Stocks, mutation);
+      }
+
+      await queryRunner.commitTransaction();
+      return successResponse(
+        'Inventory stock ledger updated successfully for multiple products',
+        updatedProducts,
+      );
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Transaction failed while processing stock changes for multiple products.',
+      );
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
   /**
    * ─── COMPILE HISTORY LEDGER TIMELINE ───
    */

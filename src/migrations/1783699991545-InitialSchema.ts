@@ -15,7 +15,6 @@ export class InitialSchema1783699991545 implements MigrationInterface {
         \`is_low_stock\` tinyint NOT NULL DEFAULT 0, 
         \`cost_price\` decimal(10,2) NOT NULL DEFAULT '0.00', 
         \`selling_price\` decimal(10,2) NOT NULL, 
-        \`category\` varchar(255) NULL DEFAULT '', 
         \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), 
         \`updatedAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6), 
         \`deletedAt\` datetime(6) NULL, 
@@ -54,7 +53,7 @@ export class InitialSchema1783699991545 implements MigrationInterface {
     );
 
     await queryRunner.query(
-      `CREATE TABLE \`business\` (
+      `CREATE TABLE \`businesses\` (
         \`id\` varchar(36) NOT NULL, 
         \`name\` varchar(255) NOT NULL, 
         \`email\` varchar(255) NOT NULL, 
@@ -73,9 +72,9 @@ export class InitialSchema1783699991545 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `DROP INDEX \`IDX_d0af6f5866201d5cb424767744\` ON \`business\``,
+      `DROP INDEX \`IDX_d0af6f5866201d5cb424767744\` ON \`businesses\``,
     );
-    await queryRunner.query(`DROP TABLE \`business\``);
+    await queryRunner.query(`DROP TABLE \`businesses\``);
     await queryRunner.query(
       `DROP INDEX \`IDX_97672ac88f789774dd47f7c8be\` ON \`users\``,
     );
