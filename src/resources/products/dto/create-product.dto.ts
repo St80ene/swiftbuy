@@ -34,11 +34,6 @@ export class CreateProductDto {
   @Type(() => Number) // cost_price to match the schema for profit margins
   cost_price!: number;
 
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  images?: string[];
-
   @IsNumber()
   @Min(5, { message: 'Reorder level must be at least 5.' })
   @Type(() => Number)

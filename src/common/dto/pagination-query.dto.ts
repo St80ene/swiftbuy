@@ -1,4 +1,4 @@
-import { IsOptional, IsInt, Min, Max, IsString } from 'class-validator';
+import { IsOptional, IsInt, Min, Max, IsString, IsIn } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
 export const NormalizeSearch = () =>
@@ -7,11 +7,30 @@ export const NormalizeSearch = () =>
       return value;
     }
 
-    return value.trim().replace(/\s+/g, ' ');
+    const normalized = value.trim().replace(/\s+/g, ' ');
+
+    return normalized || undefined;
   });
 
-export const Trim = () =>
-  Transform(({ value }) => (typeof value === 'string' ? value.trim() : value));
+export const PRODUCT_SORT_FIELDS = {
+  createdAt: 'product.createdAt',
+  updatedAt: 'product.updatedAt',
+  name: 'product.name',
+  selling_price: 'product.selling_price',
+  cost_price: 'product.cost_price',
+  stock_quantity: 'product.stock_quantity',
+} as const;
+
+export type ProductSortField = keyof typeof PRODUCT_SORT_FIELDS;
+
+export const PRODUCT_SORT_FIELD_NAMES = [
+  'createdAt',
+  'updatedAt',
+  'name',
+  'selling_price',
+  'cost_price',
+  'stock_quantity',
+] as const;
 
 export class PaginationQueryDto {
   @IsOptional()
@@ -29,9 +48,16 @@ export class PaginationQueryDto {
 
   @IsOptional()
   @IsString()
-  @Trim()
   @NormalizeSearch()
   search?: string;
 
-  [key: string]: any; // Allow additional properties for filtering
+  @IsOptional()
+  @IsIn(Object.keys(PRODUCT_SORT_FIELDS))
+  sortBy?: ProductSortField = 'createdAt';
+
+  @IsOptional()
+  @IsIn(['ASC', 'DESC'])
+  order?: 'ASC' | 'DESC' = 'DESC';
+
+  [key: string]: unknown;
 }
