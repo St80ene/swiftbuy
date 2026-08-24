@@ -14,7 +14,7 @@ import {
   UomType,
 } from './entities/product.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, IsNull } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import {
   CloudinaryService,
   CloudinaryImage,
@@ -25,7 +25,10 @@ import {
   MutationType,
   Stocks,
 } from '../stocks/entities/stock.entity';
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import {
+  PaginationQueryDto,
+  PRODUCT_SORT_FIELDS,
+} from '../../common/dto/pagination-query.dto';
 import { getPaginationOptions } from '../../utils/helpers/get_pagination_options.util';
 import { DashboardCard } from '../dashboard/interfaces/initial_interface';
 import { AuditLogAction, AuditLogEntity } from '../../enum/audit_log.enum';
@@ -59,9 +62,14 @@ export class ProductsService {
 
     const productImages: CloudinaryImage[] = [];
 
+    console.log('expected file to be uploaded', files);
+
     try {
       // 1. Concurrent Image Upload Tracking
       if (files && files.length > 0) {
+        console.log(
+          `Uploading ${files.length} product images to Cloudinary...`,
+        );
         const uploadPromises = files.map((file) =>
           this.cloudinaryService.uploadProductImage(file, 'products'),
         );
@@ -116,7 +124,7 @@ export class ProductsService {
         );
       }
 
-      console.error('Error creating product:', error);
+      console.log('Error creating product:', error);
       throw new InternalServerErrorException('Failed to create product.');
     } finally {
       await queryRunner.release();
@@ -138,7 +146,12 @@ export class ProductsService {
         skip,
       } = getPaginationOptions(paginationQuery);
 
-      const { search } = paginationQuery;
+      const { search, order = 'DESC', sortBy = 'createdAt' } = paginationQuery;
+
+      const sortColumn = PRODUCT_SORT_FIELDS[sortBy];
+
+      const sortOrder: 'ASC' | 'DESC' =
+        order?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
       const queryBuilder = this.productRepository
         .createQueryBuilder('product')
@@ -158,10 +171,7 @@ export class ProductsService {
         );
       }
 
-      queryBuilder
-        .orderBy('product.createdAt', 'DESC')
-        .skip(skip)
-        .take(limitNumber);
+      queryBuilder.orderBy(sortColumn, sortOrder).skip(skip).take(limitNumber);
 
       const [products, totalItems] = await queryBuilder.getManyAndCount();
 

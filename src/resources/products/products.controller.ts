@@ -10,6 +10,8 @@ import {
   UseInterceptors,
   ParseUUIDPipe,
   UploadedFiles,
+  HttpStatus,
+  ParseFilePipeBuilder,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -25,7 +27,16 @@ export class ProductsController {
   @UseInterceptors(FilesInterceptor('images', 5)) // ◄ Allow up to 5 images
   create(
     @Body() createProductDto: CreateProductDto,
-    @UploadedFiles() files?: Express.Multer.File[],
+    @UploadedFiles(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ })
+        .addMaxSizeValidator({ maxSize: 5 * 1024 * 1024 }) // 5MB
+        .build({
+          fileIsRequired: false,
+          errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+        }),
+    )
+    files?: Express.Multer.File[],
   ) {
     return this.productsService.create(createProductDto, files);
   }
