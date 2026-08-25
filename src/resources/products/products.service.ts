@@ -62,8 +62,6 @@ export class ProductsService {
 
     const productImages: CloudinaryImage[] = [];
 
-    console.log('expected file to be uploaded', files);
-
     try {
       // 1. Concurrent Image Upload Tracking
       if (files && files.length > 0) {
@@ -203,7 +201,10 @@ export class ProductsService {
    */
   async findOne(id: string): Promise<ApiResponse<Product>> {
     try {
-      const product = await this.productRepository.findOne({ where: { id } });
+      const product = await this.productRepository.findOne({
+        where: { id },
+        relations: { stock: true },
+      });
 
       if (!product) {
         throw new NotFoundException(

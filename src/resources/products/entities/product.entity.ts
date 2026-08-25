@@ -11,6 +11,7 @@ import {
 import { CloudinaryImage } from '../../../utils/helpers/cloudinary/cloudinary.service';
 import { IsEnum } from 'class-validator';
 import { ProductSource } from '../../product_sources/entities/product_source.entity';
+import { Stocks } from '../../stocks/entities/stock.entity';
 
 export enum UomType {
   UNIT = 'UNIT',
@@ -82,6 +83,9 @@ export class Product extends BaseEntity {
   // Bidirectional link: Let's us do: productRepository.find({ relations: { source: true } })
   @OneToOne(() => ProductSource, (source) => source.product)
   source!: ProductSource;
+
+  @OneToOne(() => Stocks, (stock) => stock.product)
+  stock!: Stocks;
 
   @CreateDateColumn({
     type: 'datetime',
