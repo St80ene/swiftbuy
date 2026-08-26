@@ -255,7 +255,6 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
           reorder_level: reorderLevelBase,
           // Initial quantity will be determined by stock management.
           stock_quantity: seed.stock_quantity,
-          is_low_stock: false,
           uom_type: seed.uom_type,
           uom_base_name: seed.uom_base_name,
           uom_display_name: seed.uom_display_name,
@@ -286,9 +285,7 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
           unit_selling_price: product.selling_price,
         }),
       );
-      const saved_stock = await stockRepository.save(stockMutations);
-
-      console.log('save stock', saved_stock);
+      await stockRepository.save(stockMutations);
     }
   }
 
