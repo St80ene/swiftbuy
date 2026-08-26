@@ -17,7 +17,7 @@ import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { ProductPaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { ProductStatusUpdateDto } from './dto/product-status-update.dto';
 
 @Controller('products')
@@ -43,13 +43,26 @@ export class ProductsController {
   }
 
   @Get()
-  findAll(@Query() paginationQuery: PaginationQueryDto) {
+  findAll(@Query() paginationQuery: ProductPaginationQueryDto) {
     return this.productsService.findAll(paginationQuery);
   }
 
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.productsService.findOne(id);
+  }
+
+  @Get(':id/audit-logs')
+  getProductAuditLogs(
+    @Param('id', ParseUUIDPipe) productId: string,
+    @Query() query: ProductPaginationQueryDto,
+  ) {
+    return this.productsService.getProductAuditLogs(productId, query);
+  }
+
+  @Get('inventory-health')
+  getInventoryHealth() {
+    return this.productsService.getInventoryHealth();
   }
 
   @Patch(':id')

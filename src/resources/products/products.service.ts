@@ -28,14 +28,17 @@ import {
   Stocks,
 } from '../stocks/entities/stock.entity';
 import {
-  PaginationQueryDto,
+  BasePaginationQueryDto,
+  PaginationMeta,
   PRODUCT_SORT_FIELDS,
+  ProductPaginationQueryDto,
 } from '../../common/dto/pagination-query.dto';
 import { getPaginationOptions } from '../../utils/helpers/get_pagination_options.util';
 import { DashboardCard } from '../dashboard/interfaces/initial_interface';
 import { AuditLogAction, AuditLogEntity } from '../../enum/audit_log.enum';
 import convertToIntegerBaseUnit from '../../utils/helpers/cloudinary/convertToBaseInteger';
 import { allowedTransitions } from './dto/product-status-update.dto';
+import { AuditLog } from '../audit_logs/entities/audit_log.entity';
 
 @Injectable()
 export class ProductsService {
@@ -150,15 +153,15 @@ export class ProductsService {
    * the allowed product sort fields. Soft-deleted products are excluded
    * from the result.
    *
-   * @param {PaginationQueryDto} paginationQuery - Pagination, search, and sorting options.
+   * @param {ProductPaginationQueryDto} paginationQuery - Pagination, search, and sorting options.
    * @returns {Promise<ApiResponse<{ products: Product[]; meta: any }>>}
    * A paginated collection of products and pagination metadata.
    *
    * @throws {InternalServerErrorException} If the product collection cannot be retrieved.
    */
   async findAll(
-    paginationQuery: PaginationQueryDto,
-  ): Promise<ApiResponse<{ products: Product[]; meta: any }>> {
+    paginationQuery: ProductPaginationQueryDto,
+  ): Promise<ApiResponse<{ products: Product[]; meta: PaginationMeta }>> {
     try {
       const {
         page: pageNumber,
@@ -634,5 +637,38 @@ export class ProductsService {
         },
       },
     ];
+  }
+
+  /**
+   * Retrieves the paginated audit history for a specific product.
+   *
+   * Filters audit logs by the product entity type and product ID,
+   * returning the most recent events first.
+   *
+   * @param productId - The unique identifier of the product.
+   * @param page - The page number to retrieve. Defaults to 1.
+   * @param limit - The maximum number of audit logs per page. Defaults to 20.
+   *
+   * @returns A paginated collection of audit logs containing:
+   * - `data` - Audit log records for the requested page.
+   * - `total` - Total number of audit logs for the product.
+   * - `page` - Current page number.
+   * - `limit` - Number of records requested per page.
+   * - `totalPages` - Total number of available pages.
+   */
+  async getProductAuditLogs(
+    productId: string,
+    query: BasePaginationQueryDto,
+  ): Promise<
+    ApiResponse<{
+      auditLogs: AuditLog[];
+      meta: PaginationMeta;
+    }>
+  > {
+    return await this.auditLogService.getEntityAuditLogs(
+      AuditLogEntity.PRODUCT,
+      productId,
+      query,
+    );
   }
 }
