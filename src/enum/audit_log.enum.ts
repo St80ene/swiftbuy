@@ -5,6 +5,9 @@ export enum AuditLogAction {
   LOGIN = 'LOGIN',
   LOGOUT = 'LOGOUT',
   PASSWORD_RESET = 'PASSWORD_RESET',
+  ACTIVATE = 'ACTIVATE',
+  DEACTIVATE = 'DEACTIVATE',
+  ARCHIVE = 'ARCHIVE',
 }
 
 export enum AuditLogEntity {

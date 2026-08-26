@@ -25,6 +25,12 @@ export enum UomBaseName {
   ML = 'ml',
 }
 
+export enum ProductStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  ARCHIVED = 'ARCHIVED',
+}
+
 export enum UomDisplayName {
   PCS = 'pcs',
   G = 'g',
@@ -56,9 +62,6 @@ export class Product extends BaseEntity {
   @Column('decimal', { precision: 10, scale: 2 })
   selling_price!: number;
 
-  @Column({ type: 'tinyint', default: 0 })
-  is_low_stock!: boolean;
-
   @Column({ type: 'int', default: 5 })
   reorder_level!: number;
 
@@ -79,6 +82,29 @@ export class Product extends BaseEntity {
   })
   @Column({ type: 'varchar', length: 10, default: UomDisplayName.PCS })
   uom_display_name!: UomDisplayName; // 'pcs', 'kg', 'L'
+
+  /**
+   * Product lifecycle status.
+   *
+   * ACTIVE:
+   * Product is currently available for normal operations.
+   *
+   * INACTIVE:
+   * Product is temporarily unavailable but still exists.
+   *
+   * ARCHIVED:
+   * Product has been permanently discontinued from normal operations.
+   */
+  @IsEnum(ProductStatus, {
+    message:
+      'Invalid product status. Must be one of: ACTIVE, INACTIVE, ARCHIVED.',
+  })
+  @Column({
+    type: 'enum',
+    enum: ProductStatus,
+    default: ProductStatus.ACTIVE,
+  })
+  status!: ProductStatus;
 
   // Bidirectional link: Let's us do: productRepository.find({ relations: { source: true } })
   @OneToOne(() => ProductSource, (source) => source.product)

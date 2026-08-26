@@ -1,8 +1,17 @@
-import { IsOptional, IsInt, Min, Max, IsString, IsIn } from 'class-validator';
+import {
+  IsOptional,
+  IsInt,
+  Min,
+  Max,
+  IsString,
+  IsIn,
+  IsEnum,
+} from 'class-validator';
 import { Transform, Type } from 'class-transformer';
+import { ProductStatus } from '../../resources/products/entities/product.entity';
 
 export const NormalizeSearch = () =>
-  Transform(({ value }) => {
+  Transform(({ value }: { value: unknown }) => {
     if (typeof value !== 'string') {
       return value;
     }
@@ -58,6 +67,13 @@ export class PaginationQueryDto {
   @IsOptional()
   @IsIn(['ASC', 'DESC'])
   order?: 'ASC' | 'DESC' = 'DESC';
+
+  @IsOptional()
+  @IsEnum(ProductStatus, {
+    message:
+      'Invalid product status. Must be one of: ACTIVE, INACTIVE, ARCHIVED.',
+  })
+  status?: ProductStatus;
 
   [key: string]: unknown;
 }
