@@ -1,8 +1,17 @@
-import { IsOptional, IsInt, Min, Max, IsString, IsIn } from 'class-validator';
+import {
+  IsOptional,
+  IsInt,
+  Min,
+  Max,
+  IsString,
+  IsIn,
+  IsEnum,
+} from 'class-validator';
 import { Transform, Type } from 'class-transformer';
+import { ProductStatus } from '../../resources/products/entities/product.entity';
 
 export const NormalizeSearch = () =>
-  Transform(({ value }) => {
+  Transform(({ value }: { value: unknown }) => {
     if (typeof value !== 'string') {
       return value;
     }
@@ -21,7 +30,7 @@ export const PRODUCT_SORT_FIELDS = {
   stock_quantity: 'product.stock_quantity',
 } as const;
 
-export type ProductSortField = keyof typeof PRODUCT_SORT_FIELDS;
+export type ProductSortField = (typeof PRODUCT_SORT_FIELD_NAMES)[number];
 
 export const PRODUCT_SORT_FIELD_NAMES = [
   'createdAt',
@@ -32,7 +41,7 @@ export const PRODUCT_SORT_FIELD_NAMES = [
   'stock_quantity',
 ] as const;
 
-export class PaginationQueryDto {
+export class BasePaginationQueryDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -51,6 +60,17 @@ export class PaginationQueryDto {
   @NormalizeSearch()
   search?: string;
 
+  [key: string]: unknown;
+}
+
+export class ProductPaginationQueryDto extends BasePaginationQueryDto {
+  @IsOptional()
+  @IsEnum(ProductStatus, {
+    message:
+      'Invalid product status. Must be one of: ACTIVE, INACTIVE, ARCHIVED.',
+  })
+  status?: ProductStatus;
+
   @IsOptional()
   @IsIn(Object.keys(PRODUCT_SORT_FIELDS))
   sortBy?: ProductSortField = 'createdAt';
@@ -60,4 +80,35 @@ export class PaginationQueryDto {
   order?: 'ASC' | 'DESC' = 'DESC';
 
   [key: string]: unknown;
+}
+
+export const AUDIT_LOG_SORT_FIELDS = {
+  createdAt: 'audit_log.createdAt',
+  updatedAt: 'audit_log.updatedAt',
+} as const;
+
+export const AUDIT_LOG_SORT_FIELD_NAMES = ['createdAt', 'updatedAt'] as const;
+
+export type AuditLogSortField = (typeof AUDIT_LOG_SORT_FIELD_NAMES)[number];
+
+export class AuditLogPaginationQueryDto extends BasePaginationQueryDto {
+  @IsOptional()
+  @IsIn(Object.keys(AUDIT_LOG_SORT_FIELDS))
+  sortBy?: AuditLogSortField = 'createdAt';
+
+  @IsOptional()
+  @IsIn(['ASC', 'DESC'])
+  order?: 'ASC' | 'DESC' = 'DESC';
+
+  [key: string]: unknown;
+}
+
+export interface PaginationMeta {
+  totalItems: number;
+  itemCount: number;
+  itemsPerPage: number;
+  totalPages: number;
+  currentPage: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
 }

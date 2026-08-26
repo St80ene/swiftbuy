@@ -5,6 +5,12 @@ import { AuditLogQueryDto } from './dto/auditlog_query.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AuditLog } from './entities/audit_log.entity';
 import { ApiResponse, successResponse } from '../../utils/response.utils';
+import { AuditLogEntity } from '../../enum/audit_log.enum';
+import {
+  BasePaginationQueryDto,
+  PaginationMeta,
+} from '../../common/dto/pagination-query.dto';
+import { getPaginationOptions } from '../../utils/helpers/get_pagination_options.util';
 
 @Injectable()
 export class AuditLogsService {
@@ -22,7 +28,7 @@ export class AuditLogsService {
   async findAll(query: AuditLogQueryDto): Promise<
     ApiResponse<{
       auditLogs: AuditLog[];
-      meta: { total: number; page: number; limit: number; totalPages: number };
+      meta: PaginationMeta;
     }>
   > {
     const {
@@ -74,10 +80,13 @@ export class AuditLogsService {
     return successResponse('Audit Logs fetched successfully', {
       auditLogs: data,
       meta: {
-        total,
-        page,
-        limit,
+        totalItems: total,
+        itemCount: data.length,
+        itemsPerPage: limit,
         totalPages: Math.ceil(total / limit),
+        currentPage: page,
+        hasNextPage: page * limit < total,
+        hasPreviousPage: page > 1,
       },
     });
   }
@@ -92,5 +101,47 @@ export class AuditLogsService {
     }
 
     return successResponse('Audit Log retrieved successfully', auditLog);
+  }
+
+  async getEntityAuditLogs(
+    entity: AuditLogEntity,
+    entityId: string,
+    query: BasePaginationQueryDto,
+  ): Promise<
+    ApiResponse<{
+      auditLogs: AuditLog[];
+      meta: PaginationMeta;
+    }>
+  > {
+    const {
+      page: pageNumber,
+      limit: limitNumber,
+      skip,
+    } = getPaginationOptions(query);
+
+    const [data, total] = await this.auditLogRepository.findAndCount({
+      where: {
+        entity,
+        entityId,
+      },
+      order: {
+        createdAt: 'DESC',
+      },
+      skip,
+      take: limitNumber,
+    });
+
+    return successResponse('Audit logs retrieved successfully', {
+      auditLogs: data,
+      meta: {
+        totalItems: total,
+        itemCount: data.length,
+        itemsPerPage: limitNumber,
+        totalPages: Math.ceil(total / limitNumber),
+        currentPage: pageNumber,
+        hasNextPage: pageNumber * limitNumber < total,
+        hasPreviousPage: pageNumber > 1,
+      },
+    });
   }
 }

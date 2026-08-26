@@ -231,7 +231,7 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
       };
     };
 
-    const productSeeds = Array.from({ length: 100 }, generateProductSeed);
+    const productSeeds = Array.from({ length: 1200 }, generateProductSeed);
 
     if (productSeeds.length > 0) {
       /**
@@ -255,7 +255,6 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
           reorder_level: reorderLevelBase,
           // Initial quantity will be determined by stock management.
           stock_quantity: seed.stock_quantity,
-          is_low_stock: false,
           uom_type: seed.uom_type,
           uom_base_name: seed.uom_base_name,
           uom_display_name: seed.uom_display_name,

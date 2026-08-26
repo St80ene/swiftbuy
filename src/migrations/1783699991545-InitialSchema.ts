@@ -6,20 +6,25 @@ export class InitialSchema1783699991545 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
       `CREATE TABLE \`products\` (
-        \`id\` varchar(36) NOT NULL, 
-        \`name\` varchar(255) NOT NULL, 
-        \`description\` varchar(255) NULL, 
-        \`images\` json NOT NULL DEFAULT ('[]'), 
-        \`stock_quantity\` int NOT NULL DEFAULT '0', 
-        \`reorder_level\` int NOT NULL DEFAULT '5', 
-        \`is_low_stock\` tinyint NOT NULL DEFAULT 0, 
-        \`cost_price\` decimal(10,2) NOT NULL DEFAULT '0.00', 
-        \`selling_price\` decimal(10,2) NOT NULL, 
-        \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), 
-        \`updatedAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6), 
-        \`deletedAt\` datetime(6) NULL, 
-        PRIMARY KEY (\`id\`)
-      ) ENGINE=InnoDB`,
+    \`id\` varchar(36) NOT NULL,
+    \`name\` varchar(255) NOT NULL,
+    \`description\` varchar(255) NULL,
+    \`images\` json NOT NULL DEFAULT ('[]'),
+
+    \`stock_quantity\` int NOT NULL DEFAULT '0',
+    \`reorder_level\` int NOT NULL DEFAULT '5',
+
+    \`cost_price\` decimal(10,2) NOT NULL DEFAULT '0.00',
+    \`selling_price\` decimal(10,2) NOT NULL,
+
+    \`status\` enum('ACTIVE', 'INACTIVE', 'ARCHIVED') NOT NULL DEFAULT 'ACTIVE',
+
+    \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    \`updatedAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    \`deletedAt\` datetime(6) NULL,
+
+    PRIMARY KEY (\`id\`)
+  ) ENGINE=InnoDB`,
     );
 
     await queryRunner.query(

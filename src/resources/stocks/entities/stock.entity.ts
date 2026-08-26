@@ -5,8 +5,11 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { OneToOne } from 'typeorm';
+import { Product } from '../../products/entities/product.entity';
 
 // Core Ledger Flow Enums
 export enum MutationType {
@@ -64,6 +67,12 @@ export class Stocks extends BaseEntity {
     default: 0.0,
   })
   unit_selling_price!: number;
+
+  @OneToOne(() => Product, (product) => product.stock, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'product_id' })
+  product!: Product;
 
   @CreateDateColumn({
     type: 'datetime',

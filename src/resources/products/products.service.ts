@@ -1,5 +1,6 @@
 import { AuditLogsService } from './../audit_logs/audit_logs.service';
 import {
+  BadRequestException,
   Inject,
   Injectable,
   InternalServerErrorException,
@@ -9,6 +10,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import {
   Product,
+  ProductStatus,
   UomBaseName,
   UomDisplayName,
   UomType,
@@ -26,13 +28,17 @@ import {
   Stocks,
 } from '../stocks/entities/stock.entity';
 import {
-  PaginationQueryDto,
+  BasePaginationQueryDto,
+  PaginationMeta,
   PRODUCT_SORT_FIELDS,
+  ProductPaginationQueryDto,
 } from '../../common/dto/pagination-query.dto';
 import { getPaginationOptions } from '../../utils/helpers/get_pagination_options.util';
 import { DashboardCard } from '../dashboard/interfaces/initial_interface';
 import { AuditLogAction, AuditLogEntity } from '../../enum/audit_log.enum';
 import convertToIntegerBaseUnit from '../../utils/helpers/cloudinary/convertToBaseInteger';
+import { allowedTransitions } from './dto/product-status-update.dto';
+import { AuditLog } from '../audit_logs/entities/audit_log.entity';
 
 @Injectable()
 export class ProductsService {
@@ -47,10 +53,21 @@ export class ProductsService {
   ) {}
 
   /**
-   * ─── CREATE PRODUCT WITH AUDIT LEDGER ───
-   * @param createProductDto
-   * @param files
-   * @returns ApiResponse<Product>
+   * Creates a new product and initializes its inventory ledger.
+   *
+   * The operation uploads any provided product images, converts the reorder
+   * level to the product's base unit, creates the product, and creates an
+   * initial stock mutation with a quantity of zero.
+   *
+   * Database operations are executed within a transaction. If the transaction
+   * fails after images have been uploaded, the uploaded Cloudinary assets are
+   * deleted to prevent orphaned files.
+   *
+   * @param {CreateProductDto} createProductDto - Data required to create the product.
+   * @param {Express.Multer.File[]} [files] - Optional product image files.
+   * @returns {Promise<ApiResponse<Product>>} The created product.
+   *
+   * @throws {InternalServerErrorException} If the product creation process fails.
    */
   async create(
     createProductDto: CreateProductDto,
@@ -61,8 +78,6 @@ export class ProductsService {
     await queryRunner.startTransaction();
 
     const productImages: CloudinaryImage[] = [];
-
-    console.log('expected file to be uploaded', files);
 
     try {
       // 1. Concurrent Image Upload Tracking
@@ -132,13 +147,21 @@ export class ProductsService {
   }
 
   /**
-   * ─── FIND ALL ───
+   * Retrieves a paginated collection of active products.
    *
+   * Supports searching by product name or description and sorting using
+   * the allowed product sort fields. Soft-deleted products are excluded
+   * from the result.
    *
+   * @param {ProductPaginationQueryDto} paginationQuery - Pagination, search, and sorting options.
+   * @returns {Promise<ApiResponse<{ products: Product[]; meta: any }>>}
+   * A paginated collection of products and pagination metadata.
+   *
+   * @throws {InternalServerErrorException} If the product collection cannot be retrieved.
    */
   async findAll(
-    paginationQuery: PaginationQueryDto,
-  ): Promise<ApiResponse<{ products: Product[]; meta: any }>> {
+    paginationQuery: ProductPaginationQueryDto,
+  ): Promise<ApiResponse<{ products: Product[]; meta: PaginationMeta }>> {
     try {
       const {
         page: pageNumber,
@@ -146,7 +169,12 @@ export class ProductsService {
         skip,
       } = getPaginationOptions(paginationQuery);
 
-      const { search, order = 'DESC', sortBy = 'createdAt' } = paginationQuery;
+      const {
+        search,
+        status,
+        order = 'DESC',
+        sortBy = 'createdAt',
+      } = paginationQuery;
 
       const sortColumn = PRODUCT_SORT_FIELDS[sortBy];
 
@@ -169,6 +197,11 @@ export class ProductsService {
             search: `%${search}%`,
           },
         );
+      }
+
+      // Filter by product lifecycle status
+      if (status) {
+        queryBuilder.andWhere('product.status = :status', { status });
       }
 
       queryBuilder.orderBy(sortColumn, sortOrder).skip(skip).take(limitNumber);
@@ -199,11 +232,23 @@ export class ProductsService {
   }
 
   /**
-   * ─── FIND ONE ───
+   * Retrieves a single product by its unique identifier.
+   *
+   * The associated stock relationship is included in the response.
+   * Soft-deleted products are not returned.
+   *
+   * @param {string} id - The unique identifier of the product.
+   * @returns {Promise<ApiResponse<Product>>} The requested product.
+   *
+   * @throws {NotFoundException} If no product exists with the provided ID.
+   * @throws {InternalServerErrorException} If the product cannot be retrieved.
    */
   async findOne(id: string): Promise<ApiResponse<Product>> {
     try {
-      const product = await this.productRepository.findOne({ where: { id } });
+      const product = await this.productRepository.findOne({
+        where: { id },
+        relations: { stock: true },
+      });
 
       if (!product) {
         throw new NotFoundException(
@@ -222,7 +267,28 @@ export class ProductsService {
   }
 
   /**
-   * ─── UPDATE PRODUCT WITH AUTOMATED STOCK CORRECTIONS ───
+   * Updates an existing product and manages associated product images.
+   *
+   * Supports partial updates to product information, including pricing,
+   * description, unit-of-measure configuration, reorder level, and images.
+   * Reorder levels are converted to the product's base unit before storage.
+   *
+   * Images marked for deletion are removed from Cloudinary, while newly
+   * uploaded files are added to the existing product image collection.
+   *
+   * The product update is executed within a database transaction. An audit
+   * record should capture the relevant state before and after the update.
+   *
+   * Stock quantities are not intended to be modified through this method.
+   * Stock mutations should be handled by the Stock Management module.
+   *
+   * @param {string} id - The unique identifier of the product to update.
+   * @param {UpdateProductDto} updateProductDto - Product fields to update.
+   * @param {Express.Multer.File[]} [files] - Optional new product image files.
+   * @returns {Promise<ApiResponse<Product>>} The updated product.
+   *
+   * @throws {NotFoundException} If the product does not exist.
+   * @throws {InternalServerErrorException} If the update operation fails.
    */
   async update(
     id: string,
@@ -283,32 +349,22 @@ export class ProductsService {
 
       // check for product?.stock_quantity is above 0 or you assign default value as 0
       if (product?.stock_quantity)
-        product.is_low_stock = product?.stock_quantity <= product.reorder_level;
-
-      // 3. Save adjustments safely via queryRunner manager
-      queryRunner.manager.merge(Product, product, {
-        name: updateProductDto.name,
-        description: updateProductDto.description,
-        cost_price: updateProductDto.cost_price,
-        selling_price: updateProductDto.selling_price,
-        uom_type: updateProductDto.uom_type as UomType,
-        uom_base_name: updateProductDto.uom_base_name as UomBaseName,
-        uom_display_name: updateProductDto.uom_display_name as UomDisplayName,
-      });
+        // 3. Save adjustments safely via queryRunner manager
+        queryRunner.manager.merge(Product, product, {
+          name: updateProductDto.name,
+          description: updateProductDto.description,
+          cost_price: updateProductDto.cost_price,
+          selling_price: updateProductDto.selling_price,
+          uom_type: updateProductDto.uom_type as UomType,
+          uom_base_name: updateProductDto.uom_base_name as UomBaseName,
+          uom_display_name: updateProductDto.uom_display_name as UomDisplayName,
+        });
 
       const updatedProduct = await queryRunner.manager.save(Product, product);
       await queryRunner.commitTransaction();
 
       await this.auditLogService.create({
-        action: AuditLogAction.CREATE,
-        entity: AuditLogEntity.PRODUCT,
-        entityId: product.id,
-        oldValue: null,
-        newValue: product,
-      });
-
-      await this.auditLogService.create({
-        action: AuditLogAction.CREATE,
+        action: AuditLogAction.UPDATE,
         entity: AuditLogEntity.PRODUCT,
         entityId: product.id,
         oldValue: null,
@@ -337,7 +393,21 @@ export class ProductsService {
   }
 
   /**
-   * ─── REMOVE (SOFT-DELETE WITH AUTOMATIC ASSET TEARDOWN) ───
+   * Soft-deletes a product and removes its associated remote image assets.
+   *
+   * Before soft deletion, all associated product images are removed from
+   * Cloudinary and the product image collection is cleared.
+   *
+   * The product record remains in the database through TypeORM soft deletion
+   * to preserve historical references and inventory ledger relationships.
+   *
+   * An audit record is created to preserve the product's state before deletion.
+   *
+   * @param {string} id - The unique identifier of the product to remove.
+   * @returns {Promise<ApiResponse<null>>} A successful deletion response.
+   *
+   * @throws {NotFoundException} If the product does not exist.
+   * @throws {InternalServerErrorException} If the deletion operation fails.
    */
   async remove(id: string): Promise<ApiResponse<null>> {
     try {
@@ -386,6 +456,142 @@ export class ProductsService {
     }
   }
 
+  /*
+   * Validates that the product exists and ensures the requested status
+   * transition is allowed according to the configured product lifecycle rules.
+   *
+   * Supported lifecycle transitions are defined by `allowedTransitions`.
+   * Direct or invalid transitions are rejected with a BadRequestException.
+   *
+   * Each successful status transition creates an audit record describing
+   * the previous status, the new status, and the reason for the change.
+   *
+   * This method handles lifecycle operations such as:
+   * - Activating an inactive product.
+   * - Deactivating an active product.
+   * - Archiving an inactive product.
+   *
+   * @param {string} id - The unique identifier of the product.
+   * @param {ProductStatus} status - The target lifecycle status.
+   * @param {string} [reason] - Optional reason for the status change.
+   * @returns {Promise<ApiResponse<Product>>} The product with its updated status.
+   *
+   * @throws {NotFoundException} If the product does not exist.
+   * @throws {BadRequestException} If the requested status is unchanged or the
+   * transition is not allowed.
+   * @throws {InternalServerErrorException} If the status update operation fails.
+   */
+  async updateStatus(
+    id: string,
+    status: ProductStatus,
+    reason?: string,
+  ): Promise<ApiResponse<Product>> {
+    try {
+      const product = await this.productRepository.findOne({
+        where: { id },
+      });
+
+      if (!product) {
+        throw new NotFoundException(
+          `Product with ID "${id}" could not be found.`,
+        );
+      }
+
+      const oldStatus = product.status;
+
+      // Nothing to update
+      if (oldStatus === status) {
+        throw new BadRequestException(
+          `Product is already ${status.toLowerCase()}.`,
+        );
+      }
+
+      // Validate allowed status transitions
+
+      if (!allowedTransitions[oldStatus].includes(status)) {
+        throw new BadRequestException(
+          `Product cannot be changed from ${oldStatus} to ${status}.`,
+        );
+      }
+
+      // Update status
+      product.status = status;
+
+      const updated = await this.productRepository.save(product);
+
+      // Determine audit action
+      let action: AuditLogAction;
+
+      switch (status) {
+        case ProductStatus.ACTIVE:
+          action = AuditLogAction.ACTIVATE;
+          break;
+
+        case ProductStatus.INACTIVE:
+          action = AuditLogAction.DEACTIVATE;
+          break;
+
+        case ProductStatus.ARCHIVED:
+          action = AuditLogAction.ARCHIVE;
+          break;
+
+        default:
+          throw new BadRequestException('Invalid product status.');
+      }
+
+      // Audit log
+      await this.auditLogService.create({
+        action,
+        entity: AuditLogEntity.PRODUCT,
+        entityId: product.id,
+        oldValue: {
+          status: oldStatus,
+        },
+        newValue: {
+          status: updated.status,
+        },
+        metadata: {
+          productName: product.name,
+          reason: reason || 'User initiated status change',
+          changedAt: new Date().toISOString(),
+        },
+      });
+
+      return successResponse(
+        `Product ${status.toLowerCase()} successfully.`,
+        updated,
+      );
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
+      console.error(`Error updating product status ${id}:`, error);
+
+      throw new InternalServerErrorException(
+        'Failed to update product status.',
+      );
+    }
+  }
+
+  /**
+   * Calculates high-level inventory health metrics for the dashboard.
+   *
+   * Aggregates product and inventory data to provide:
+   * - Total number of products.
+   * - Total quantity of stock available.
+   * - Number of products at or below their reorder level.
+   * - Number of out-of-stock products.
+   * - Total inventory value based on cost price.
+   *
+   * The returned metrics are formatted as dashboard cards suitable for
+   * presentation in the inventory dashboard.
+   *
+   * @returns {Promise<DashboardCard[]>} A collection of inventory health cards.
+   */
   async getInventoryHealth(): Promise<DashboardCard[]> {
     const queryBuilder = this.productRepository.createQueryBuilder('product');
 
@@ -431,5 +637,38 @@ export class ProductsService {
         },
       },
     ];
+  }
+
+  /**
+   * Retrieves the paginated audit history for a specific product.
+   *
+   * Filters audit logs by the product entity type and product ID,
+   * returning the most recent events first.
+   *
+   * @param productId - The unique identifier of the product.
+   * @param page - The page number to retrieve. Defaults to 1.
+   * @param limit - The maximum number of audit logs per page. Defaults to 20.
+   *
+   * @returns A paginated collection of audit logs containing:
+   * - `data` - Audit log records for the requested page.
+   * - `total` - Total number of audit logs for the product.
+   * - `page` - Current page number.
+   * - `limit` - Number of records requested per page.
+   * - `totalPages` - Total number of available pages.
+   */
+  async getProductAuditLogs(
+    productId: string,
+    query: BasePaginationQueryDto,
+  ): Promise<
+    ApiResponse<{
+      auditLogs: AuditLog[];
+      meta: PaginationMeta;
+    }>
+  > {
+    return await this.auditLogService.getEntityAuditLogs(
+      AuditLogEntity.PRODUCT,
+      productId,
+      query,
+    );
   }
 }
