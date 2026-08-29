@@ -14,7 +14,7 @@ import {
   PurchaseOrderStatus,
 } from './entities/purchase_order.entity';
 import { PurchaseOrderItem } from './entities/purchase_order_item.entity';
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { BasePaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { Product } from '../products/entities/product.entity';
 import { ProductSource } from '../product_sources/entities/product_source.entity';
 import { ApiResponse, successResponse } from '../../utils/response.utils';
@@ -102,7 +102,7 @@ export class PurchaseOrdersService {
   }
 
   // READ ALL: Find matching orders
-  async findAll(paginationQuery: PaginationQueryDto) {
+  async findAll(paginationQuery: BasePaginationQueryDto) {
     const {
       page = 1,
       limit = 10,
@@ -344,7 +344,7 @@ export class PurchaseOrdersService {
 
   async getSupplierProducts(
     supplierId: string,
-    query: PaginationQueryDto,
+    query: BasePaginationQueryDto,
   ): Promise<ApiResponse<any>> {
     await this.supplierService.getSupplierOrThrow(supplierId);
 

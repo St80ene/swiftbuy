@@ -7,10 +7,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
+import { allowedTransitions, UpdateProductDto } from './dto/update-product.dto';
 import {
   Product,
-  ProductStatus,
   UomBaseName,
   UomDisplayName,
   UomType,
@@ -37,7 +36,6 @@ import { getPaginationOptions } from '../../utils/helpers/get_pagination_options
 import { DashboardCard } from '../dashboard/interfaces/initial_interface';
 import { AuditLogAction, AuditLogEntity } from '../../enum/audit_log.enum';
 import convertToIntegerBaseUnit from '../../utils/helpers/cloudinary/convertToBaseInteger';
-import { allowedTransitions } from './dto/product-status-update.dto';
 import { AuditLog } from '../audit_logs/entities/audit_log.entity';
 
 @Injectable()
@@ -309,6 +307,7 @@ export class ProductsService {
           `Product with ID "${id}" could not be found.`,
         );
       }
+      const oldProductDetails = product;
 
       // 1. Partial Image Management Strategy
       let currentImages = [...(product.images || [])];
@@ -347,6 +346,27 @@ export class ProductsService {
         );
       }
 
+      if (updateProductDto.status) {
+        const oldStatus = product.status;
+
+        // Nothing to update
+        if (oldStatus === updateProductDto.status) {
+          throw new BadRequestException(
+            `Product is already ${status.toLowerCase()}.`,
+          );
+        }
+
+        // Validate allowed status transitions
+        if (!allowedTransitions[oldStatus].includes(updateProductDto.status)) {
+          throw new BadRequestException(
+            `Product cannot be changed from ${oldStatus} to ${updateProductDto.status}.`,
+          );
+        }
+
+        // Update status
+        product.status = updateProductDto.status;
+      }
+
       // check for product?.stock_quantity is above 0 or you assign default value as 0
       if (product?.stock_quantity)
         // 3. Save adjustments safely via queryRunner manager
@@ -367,15 +387,15 @@ export class ProductsService {
         action: AuditLogAction.UPDATE,
         entity: AuditLogEntity.PRODUCT,
         entityId: product.id,
-        oldValue: null,
-        newValue: product,
+        oldValue: oldProductDetails,
+        newValue: updatedProduct,
         metadata: {
           productName: product.name,
           // sku: product.sku,
           // companyId: product.companyId,
           // supplierId: product.supplierId,
           createdAt: new Date().toISOString(),
-          reason: 'User initiated creation',
+          reason: `${product.name} was updated by user`,
         },
       });
 
@@ -453,127 +473,6 @@ export class ProductsService {
       if (error instanceof NotFoundException) throw error;
       console.error(`Error deleting product ${id}:`, error);
       throw new InternalServerErrorException('Failed to remove product.');
-    }
-  }
-
-  /*
-   * Validates that the product exists and ensures the requested status
-   * transition is allowed according to the configured product lifecycle rules.
-   *
-   * Supported lifecycle transitions are defined by `allowedTransitions`.
-   * Direct or invalid transitions are rejected with a BadRequestException.
-   *
-   * Each successful status transition creates an audit record describing
-   * the previous status, the new status, and the reason for the change.
-   *
-   * This method handles lifecycle operations such as:
-   * - Activating an inactive product.
-   * - Deactivating an active product.
-   * - Archiving an inactive product.
-   *
-   * @param {string} id - The unique identifier of the product.
-   * @param {ProductStatus} status - The target lifecycle status.
-   * @param {string} [reason] - Optional reason for the status change.
-   * @returns {Promise<ApiResponse<Product>>} The product with its updated status.
-   *
-   * @throws {NotFoundException} If the product does not exist.
-   * @throws {BadRequestException} If the requested status is unchanged or the
-   * transition is not allowed.
-   * @throws {InternalServerErrorException} If the status update operation fails.
-   */
-  async updateStatus(
-    id: string,
-    status: ProductStatus,
-    reason?: string,
-  ): Promise<ApiResponse<Product>> {
-    try {
-      const product = await this.productRepository.findOne({
-        where: { id },
-      });
-
-      if (!product) {
-        throw new NotFoundException(
-          `Product with ID "${id}" could not be found.`,
-        );
-      }
-
-      const oldStatus = product.status;
-
-      // Nothing to update
-      if (oldStatus === status) {
-        throw new BadRequestException(
-          `Product is already ${status.toLowerCase()}.`,
-        );
-      }
-
-      // Validate allowed status transitions
-
-      if (!allowedTransitions[oldStatus].includes(status)) {
-        throw new BadRequestException(
-          `Product cannot be changed from ${oldStatus} to ${status}.`,
-        );
-      }
-
-      // Update status
-      product.status = status;
-
-      const updated = await this.productRepository.save(product);
-
-      // Determine audit action
-      let action: AuditLogAction;
-
-      switch (status) {
-        case ProductStatus.ACTIVE:
-          action = AuditLogAction.ACTIVATE;
-          break;
-
-        case ProductStatus.INACTIVE:
-          action = AuditLogAction.DEACTIVATE;
-          break;
-
-        case ProductStatus.ARCHIVED:
-          action = AuditLogAction.ARCHIVE;
-          break;
-
-        default:
-          throw new BadRequestException('Invalid product status.');
-      }
-
-      // Audit log
-      await this.auditLogService.create({
-        action,
-        entity: AuditLogEntity.PRODUCT,
-        entityId: product.id,
-        oldValue: {
-          status: oldStatus,
-        },
-        newValue: {
-          status: updated.status,
-        },
-        metadata: {
-          productName: product.name,
-          reason: reason || 'User initiated status change',
-          changedAt: new Date().toISOString(),
-        },
-      });
-
-      return successResponse(
-        `Product ${status.toLowerCase()} successfully.`,
-        updated,
-      );
-    } catch (error) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof BadRequestException
-      ) {
-        throw error;
-      }
-
-      console.error(`Error updating product status ${id}:`, error);
-
-      throw new InternalServerErrorException(
-        'Failed to update product status.',
-      );
     }
   }
 
