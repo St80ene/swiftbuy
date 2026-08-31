@@ -18,7 +18,7 @@ import {
 } from '../purchase_orders/entities/purchase_order.entity';
 import { Supplier } from './entities/supplier.entity';
 import { SupplierQueryDto } from './dto/supplier-query.dto';
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { BasePaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { DashboardCard } from '../dashboard/interfaces/initial_interface';
 
 @Injectable()
@@ -185,7 +185,7 @@ export class SuppliersService {
 
   async getPurchaseOrders(
     supplierId: string,
-    query: PaginationQueryDto & { status?: PurchaseOrderStatus },
+    query: BasePaginationQueryDto & { status?: PurchaseOrderStatus },
   ): Promise<ApiResponse<any>> {
     await this.getSupplierOrThrow(supplierId);
 

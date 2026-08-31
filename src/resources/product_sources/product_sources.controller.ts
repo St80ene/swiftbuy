@@ -12,7 +12,7 @@ import {
 import { ProductSourcesService } from './product_sources.service';
 import { CreateProductSourceDto } from './dto/create-product_source.dto';
 import { UpdateProductSourceDto } from './dto/update-product_source.dto';
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { BasePaginationQueryDto } from '../../common/dto/pagination-query.dto';
 
 @Controller('product-sources')
 export class ProductSourcesController {
@@ -24,7 +24,7 @@ export class ProductSourcesController {
   }
 
   @Get()
-  findAll(@Query() query: PaginationQueryDto) {
+  findAll(@Query() query: BasePaginationQueryDto) {
     return this.productSourcesService.findAll(query);
   }
 

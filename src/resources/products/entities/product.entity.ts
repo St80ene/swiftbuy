@@ -100,9 +100,9 @@ export class Product extends BaseEntity {
       'Invalid product status. Must be one of: ACTIVE, INACTIVE, ARCHIVED.',
   })
   @Column({
-    type: 'enum',
-    enum: ProductStatus,
-    default: ProductStatus.ACTIVE,
+    type: 'varchar',
+    // enum: ProductStatus,
+    default: ProductStatus.INACTIVE,
   })
   status!: ProductStatus;
 

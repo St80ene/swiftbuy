@@ -18,7 +18,6 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { ProductPaginationQueryDto } from '../../common/dto/pagination-query.dto';
-import { ProductStatusUpdateDto } from './dto/product-status-update.dto';
 
 @Controller('products')
 export class ProductsController {
@@ -73,14 +72,6 @@ export class ProductsController {
     @UploadedFiles() files?: Express.Multer.File[],
   ) {
     return this.productsService.update(id, updateProductDto, files);
-  }
-
-  @Patch(':id/status')
-  updateStatus(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() { status }: { status: ProductStatusUpdateDto['status'] },
-  ) {
-    return this.productsService.updateStatus(id, status);
   }
 
   @Delete(':id')
