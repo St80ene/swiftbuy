@@ -8,12 +8,7 @@ import {
 } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { allowedTransitions, UpdateProductDto } from './dto/update-product.dto';
-import {
-  Product,
-  UomBaseName,
-  UomDisplayName,
-  UomType,
-} from './entities/product.entity';
+import { Product } from './entities/product.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import {
