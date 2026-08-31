@@ -294,6 +294,7 @@ export class ProductsService {
     files?: Express.Multer.File[],
   ): Promise<ApiResponse<Product>> {
     const queryRunner = this.dataSource.createQueryRunner();
+
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
@@ -307,103 +308,150 @@ export class ProductsService {
           `Product with ID "${id}" could not be found.`,
         );
       }
-      const oldProductDetails = product;
 
-      // 1. Partial Image Management Strategy
-      let currentImages = [...(product.images || [])];
+      /**
+       * IMPORTANT:
+       * Create an independent snapshot before modifying the product.
+       * This snapshot is used to populate the `oldValue` field in the audit log.
+       */
+      const oldProductDetails = structuredClone(product);
 
-      if (
-        updateProductDto.imagesToDelete &&
-        updateProductDto.imagesToDelete.length > 0
-      ) {
-        for (const publicId of updateProductDto.imagesToDelete) {
+      /**
+       * Extract fields that require special business logic.
+       * The remaining properties can be safely passed to TypeORM.
+       */
+      const { imagesToDelete, reorder_level, status, ...productUpdates } =
+        updateProductDto;
+
+      // --------------------------------------------------
+      // 1. Image management
+      // --------------------------------------------------
+
+      let currentImages = [...(product.images ?? [])];
+
+      if (imagesToDelete?.length) {
+        for (const publicId of imagesToDelete) {
           await this.cloudinaryService.deleteImage(publicId);
+
           currentImages = currentImages.filter(
-            (img) => img.publicId !== publicId,
+            (image) => image.publicId !== publicId,
           );
         }
       }
 
-      if (files && files.length > 0) {
+      if (files?.length) {
         const uploadPromises = files.map((file) =>
           this.cloudinaryService.uploadProductImage(file, 'products'),
         );
+
         const newAssets = await Promise.all(uploadPromises);
+
         currentImages = [...currentImages, ...newAssets];
       }
 
       product.images = currentImages;
 
-      // 2. Audit Ledger Drift Monitoring with UOM Translation
-      const currentUomDisplayName =
-        updateProductDto.uom_display_name || product.uom_display_name;
+      // --------------------------------------------------
+      // 2. Reorder level
+      // --------------------------------------------------
 
-      // Recalculate dynamic flags based on the base unit updates
-      if (updateProductDto.reorder_level !== undefined) {
+      const currentUomDisplayName =
+        updateProductDto.uom_display_name ?? product.uom_display_name;
+
+      if (reorder_level !== undefined) {
         product.reorder_level = convertToIntegerBaseUnit(
-          updateProductDto.reorder_level,
+          reorder_level,
           currentUomDisplayName,
         );
       }
 
-      if (updateProductDto.status) {
+      // --------------------------------------------------
+      // 3. Status transition
+      // --------------------------------------------------
+
+      if (status !== undefined) {
         const oldStatus = product.status;
 
-        // Nothing to update
-        if (oldStatus === updateProductDto.status) {
+        // Prevent unnecessary status updates
+        if (oldStatus === status) {
           throw new BadRequestException(
-            `Product is already ${status.toLowerCase()}.`,
+            `Product is already ${oldStatus.toLowerCase()}.`,
           );
         }
 
-        // Validate allowed status transitions
-        if (!allowedTransitions[oldStatus].includes(updateProductDto.status)) {
+        // Validate the status transition
+        if (!allowedTransitions[oldStatus].includes(status)) {
           throw new BadRequestException(
-            `Product cannot be changed from ${oldStatus} to ${updateProductDto.status}.`,
+            `Product cannot be changed from ${oldStatus} to ${status}.`,
           );
         }
 
-        // Update status
-        product.status = updateProductDto.status;
+        product.status = status;
       }
 
-      // check for product?.stock_quantity is above 0 or you assign default value as 0
-      if (product?.stock_quantity)
-        // 3. Save adjustments safely via queryRunner manager
-        queryRunner.manager.merge(Product, product, {
-          name: updateProductDto.name,
-          description: updateProductDto.description,
-          cost_price: updateProductDto.cost_price,
-          selling_price: updateProductDto.selling_price,
-          uom_type: updateProductDto.uom_type as UomType,
-          uom_base_name: updateProductDto.uom_base_name as UomBaseName,
-          uom_display_name: updateProductDto.uom_display_name as UomDisplayName,
-        });
+      // --------------------------------------------------
+      // 4. Normal product fields
+      // --------------------------------------------------
+
+      /**
+       * `productUpdates` contains only the fields that can be
+       * directly updated by TypeORM.
+       *
+       * It does NOT contain:
+       * - imagesToDelete
+       * - reorder_level
+       * - status
+       */
+      queryRunner.manager.merge(Product, product, productUpdates);
+
+      // --------------------------------------------------
+      // 5. Save updated product
+      // --------------------------------------------------
 
       const updatedProduct = await queryRunner.manager.save(Product, product);
-      await queryRunner.commitTransaction();
+
+      /**
+       * Create an independent snapshot of the new state
+       * for the audit log.
+       */
+      const newProductDetails = structuredClone(updatedProduct);
+
+      // --------------------------------------------------
+      // 6. Create audit record
+      // --------------------------------------------------
 
       await this.auditLogService.create({
         action: AuditLogAction.UPDATE,
         entity: AuditLogEntity.PRODUCT,
-        entityId: product.id,
+        entityId: updatedProduct.id,
+
         oldValue: oldProductDetails,
-        newValue: updatedProduct,
+        newValue: newProductDetails,
+
         metadata: {
-          productName: product.name,
-          // sku: product.sku,
-          // companyId: product.companyId,
-          // supplierId: product.supplierId,
+          productName: updatedProduct.name,
           createdAt: new Date().toISOString(),
-          reason: `${product.name} was updated by user`,
+          reason: `${updatedProduct.name} was updated by user`,
         },
       });
+
+      // --------------------------------------------------
+      // 7. Commit transaction
+      // --------------------------------------------------
+
+      await queryRunner.commitTransaction();
 
       return successResponse('Product updated successfully', updatedProduct);
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      if (error instanceof NotFoundException) throw error;
-      console.error(`Error updating product ${id}:`, error);
+
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
       throw new InternalServerErrorException(
         'Failed to update product details.',
       );
