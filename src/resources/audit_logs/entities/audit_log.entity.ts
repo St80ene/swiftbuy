@@ -4,8 +4,12 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { AuditLogAction, AuditLogEntity } from '../../../enum/audit_log.enum';
+import { Business } from '../../business/entities/business.entity';
+import { Store } from '../../stores/entities/store.entity';
 
 @Entity('audit_logs')
 export class AuditLog extends BaseEntity {
@@ -39,9 +43,31 @@ export class AuditLog extends BaseEntity {
   @Column({ name: 'metadata', type: 'json', nullable: true })
   metadata?: Record<string, any> | null;
 
+  @Column({ type: 'char', length: 36, nullable: true })
+  business_id?: string;
+
+  @Column({ type: 'char', length: 36, nullable: true })
+  store_id?: string;
+
+  @ManyToOne(() => Business, (business) => business.audit_logs, {
+    nullable: true,
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
+  @JoinColumn({ name: 'business_id' })
+  business?: Business;
+
+  @ManyToOne(() => Store, (store) => store.audit_logs, {
+    nullable: true,
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
+  @JoinColumn({ name: 'store_id' })
+  store?: Store;
+
   @CreateDateColumn({
     type: 'datetime',
     default: () => 'CURRENT_TIMESTAMP',
   })
-  createdAt!: Date;
+  created_at!: Date;
 }

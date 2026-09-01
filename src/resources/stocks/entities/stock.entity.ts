@@ -7,6 +7,7 @@ import {
   Entity,
   JoinColumn,
   PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { OneToOne } from 'typeorm';
 import { Product } from '../../products/entities/product.entity';
@@ -99,4 +100,19 @@ export class AdjustStockDto {
   @Type(() => Number)
   @Min(1)
   quantity!: number; // The amount being changed
+
+  @CreateDateColumn({
+    name: 'created_at',
+    type: 'datetime',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  created_at!: Date;
+
+  @UpdateDateColumn({
+    name: 'updated_at',
+    type: 'datetime',
+    default: () => 'CURRENT_TIMESTAMP',
+    onUpdate: 'CURRENT_TIMESTAMP',
+  })
+  updated_at!: Date;
 }

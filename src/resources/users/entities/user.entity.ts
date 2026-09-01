@@ -10,6 +10,8 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Role } from '../../../auth/entities/role.entity';
+import { Business } from '../../business/entities/business.entity';
+import { Store } from '../../stores/entities/store.entity';
 
 @Entity({ name: 'users' })
 export class User extends BaseEntity {
@@ -30,13 +32,25 @@ export class User extends BaseEntity {
   last_name!: string;
 
   @Column({ type: 'varchar', length: 150, unique: true })
-  email!: string;
+  business_email!: string;
 
   @Column({
     type: 'varchar',
     length: 20,
   })
   role_id!: string;
+
+  @Column({
+    type: 'varchar',
+    length: 20,
+  })
+  business_id!: string;
+
+  @Column({
+    type: 'varchar',
+    length: 20,
+  })
+  store_id!: string;
 
   @Column({
     type: 'boolean',
@@ -48,7 +62,7 @@ export class User extends BaseEntity {
     type: 'datetime',
     default: () => 'CURRENT_TIMESTAMP',
   })
-  createdAt!: Date;
+  created_at!: Date;
 
   @ManyToOne(() => Role, (role) => role.users, {
     onDelete: 'CASCADE',
@@ -57,16 +71,30 @@ export class User extends BaseEntity {
   @JoinColumn({ name: 'role_id' })
   role!: Role;
 
+  @ManyToOne(() => Business, (business) => business.users, {
+    onDelete: 'CASCADE',
+    eager: true,
+  })
+  @JoinColumn({ name: 'business_id' })
+  business!: Business;
+
+  @ManyToOne(() => Store, (store) => store.users, {
+    onDelete: 'CASCADE',
+    eager: true,
+  })
+  @JoinColumn({ name: 'store_id' })
+  store!: Store;
+
   @UpdateDateColumn({
     type: 'datetime',
     default: () => 'CURRENT_TIMESTAMP',
     onUpdate: 'CURRENT_TIMESTAMP',
   })
-  updatedAt!: Date;
+  updated_at!: Date;
 
   @DeleteDateColumn({
     type: 'datetime',
     nullable: true,
   })
-  deletedAt?: Date | null;
+  deleted_at?: Date | null;
 }

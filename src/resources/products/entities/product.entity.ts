@@ -4,6 +4,8 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -12,6 +14,8 @@ import { CloudinaryImage } from '../../../utils/helpers/cloudinary/cloudinary.se
 import { IsEnum } from 'class-validator';
 import { ProductSource } from '../../product_sources/entities/product_source.entity';
 import { Stocks } from '../../stocks/entities/stock.entity';
+import { Category } from '../../categories/entities/category.entity';
+import { Business } from '../../business/entities/business.entity';
 
 export enum UomType {
   UNIT = 'UNIT',
@@ -113,6 +117,28 @@ export class Product extends BaseEntity {
   @OneToOne(() => Stocks, (stock) => stock.product)
   stock!: Stocks;
 
+  @Column({ type: 'char', length: 36, nullable: true })
+  category_id?: string;
+
+  @Column({ type: 'char', length: 36, nullable: true })
+  business_id?: string;
+
+  @ManyToOne(() => Category, (category) => category.products, {
+    nullable: true,
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
+  @JoinColumn({ name: 'category_id' })
+  category?: Category;
+
+  @ManyToOne(() => Business, (business) => business.products, {
+    nullable: true,
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
+  @JoinColumn({ name: 'business_id' })
+  business?: Business;
+
   @CreateDateColumn({
     type: 'datetime',
     default: () => 'CURRENT_TIMESTAMP',
@@ -124,11 +150,11 @@ export class Product extends BaseEntity {
     default: () => 'CURRENT_TIMESTAMP',
     onUpdate: 'CURRENT_TIMESTAMP',
   })
-  updatedAt!: Date;
+  updated_at!: Date;
 
   @DeleteDateColumn({
     type: 'datetime',
     nullable: true,
   })
-  deletedAt!: Date | null;
+  deleted_at!: Date | null;
 }

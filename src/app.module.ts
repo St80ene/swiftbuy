@@ -3,7 +3,6 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { mySqLDataSourceOptions } from './database/config/appDataSource';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { BusinessesModule } from './resources/business/business.module';
@@ -21,6 +20,8 @@ import { DashboardModule } from './resources/dashboard/dashboard.module';
 import { ReportsModule } from './resources/reports/reports.module';
 import { DataSource } from 'typeorm';
 import { getDatabaseConfig } from './database/config/getDatabaseConfig';
+import { CategoriesModule } from './resources/categories/categories.module';
+import { StoresModule } from './resources/stores/stores.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -54,6 +55,8 @@ import { getDatabaseConfig } from './database/config/getDatabaseConfig';
     AuthModule,
     DashboardModule,
     ReportsModule,
+    CategoriesModule,
+    StoresModule,
   ],
   controllers: [AppController],
   providers: [
