@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { PurchaseOrderItem } from './purchase_order_item.entity';
 import { Supplier } from '../../suppliers/entities/supplier.entity';
+import { Store } from '../../stores/entities/store.entity';
 
 export enum PurchaseOrderStatus {
   DRAFT = 'DRAFT',
@@ -32,6 +33,9 @@ export class PurchaseOrder {
   @Column()
   supplier_id!: string;
 
+  @Column()
+  store_id!: string;
+
   @Column({ type: 'varchar', length: 30, default: PurchaseOrderStatus.DRAFT })
   status?: PurchaseOrderStatus;
 
@@ -44,12 +48,6 @@ export class PurchaseOrder {
   @Column({ nullable: true })
   approved_by_id?: string;
 
-  @CreateDateColumn()
-  createdAt!: Date;
-
-  @UpdateDateColumn()
-  updatedAt!: Date;
-
   @OneToMany(() => PurchaseOrderItem, (item) => item.purchase_order, {
     cascade: true,
   })
@@ -60,4 +58,16 @@ export class PurchaseOrder {
   })
   @JoinColumn({ name: 'supplier_id' })
   supplier!: Supplier;
+
+  @ManyToOne(() => Store, {
+    onDelete: 'RESTRICT',
+  })
+  @JoinColumn({ name: 'store_id' })
+  store!: Store;
+
+  @CreateDateColumn()
+  created_at!: Date;
+
+  @UpdateDateColumn()
+  updated_at!: Date;
 }

@@ -11,6 +11,10 @@ import {
 import { CloudinaryImage } from '../../../utils/helpers/cloudinary/cloudinary.service';
 import { BusinessSettingsEntity } from './business_settings.entity';
 import { Category } from '../../categories/entities/category.entity';
+import { User } from '../../users/entities/user.entity';
+import { Product } from '../../products/entities/product.entity';
+import { AuditLog } from '../../audit_logs/entities/audit_log.entity';
+import { Store } from '../../stores/entities/store.entity';
 
 @Entity({ name: 'businesses' })
 export class Business extends BaseEntity {
@@ -215,6 +219,18 @@ export class Business extends BaseEntity {
 
   @OneToMany(() => Category, (category) => category.business)
   categories!: Category[];
+
+  @OneToMany(() => User, (user) => user.business)
+  users!: User[];
+
+  @OneToMany(() => Store, (store) => store.business)
+  stores!: Store[];
+
+  @OneToMany(() => Product, (product) => product.business)
+  products!: Product[];
+
+  @OneToMany(() => AuditLog, (audit_log) => audit_log.business)
+  audit_logs!: AuditLog[];
 
   // ==========================================================
   // TIMESTAMPS

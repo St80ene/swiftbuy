@@ -21,6 +21,7 @@ import { ReportsModule } from './resources/reports/reports.module';
 import { DataSource } from 'typeorm';
 import { getDatabaseConfig } from './database/config/getDatabaseConfig';
 import { CategoriesModule } from './resources/categories/categories.module';
+import { StoresModule } from './resources/stores/stores.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -55,6 +56,7 @@ import { CategoriesModule } from './resources/categories/categories.module';
     DashboardModule,
     ReportsModule,
     CategoriesModule,
+    StoresModule,
   ],
   controllers: [AppController],
   providers: [

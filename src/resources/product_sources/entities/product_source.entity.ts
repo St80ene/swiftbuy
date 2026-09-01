@@ -33,5 +33,5 @@ export class ProductSource {
   product!: Product;
 
   @CreateDateColumn()
-  createdAt!: Date;
+  created_at!: Date;
 }

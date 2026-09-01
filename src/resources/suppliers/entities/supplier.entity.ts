@@ -1,5 +1,12 @@
 import { ProductSource } from '../../product_sources/entities/product_source.entity';
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { PurchaseOrder } from '../../purchase_orders/entities/purchase_order.entity';
 
 @Entity({ name: 'suppliers' })
@@ -21,4 +28,19 @@ export class Supplier {
 
   @OneToMany(() => PurchaseOrder, (po) => po.supplier)
   purchaseOrders!: PurchaseOrder[];
+
+  @CreateDateColumn({
+    name: 'created_at',
+    type: 'datetime',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  created_at!: Date;
+
+  @UpdateDateColumn({
+    name: 'updated_at',
+    type: 'datetime',
+    default: () => 'CURRENT_TIMESTAMP',
+    onUpdate: 'CURRENT_TIMESTAMP',
+  })
+  updated_at!: Date;
 }

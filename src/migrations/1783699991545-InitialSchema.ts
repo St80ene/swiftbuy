@@ -354,11 +354,6 @@ export class InitialSchema1783699991545 implements MigrationInterface {
             isNullable: true,
           },
           {
-            name: 'is_active',
-            type: 'boolean',
-            default: true,
-          },
-          {
             name: 'created_at',
             type: 'datetime',
             default: 'CURRENT_TIMESTAMP',
@@ -406,7 +401,7 @@ export class InitialSchema1783699991545 implements MigrationInterface {
       }),
       new TableIndex({
         name: 'IDX_stores_business_active',
-        columnNames: ['business_id', 'is_active'],
+        columnNames: ['business_id'],
       }),
     ]);
 
@@ -1245,6 +1240,11 @@ export class InitialSchema1783699991545 implements MigrationInterface {
           },
           {
             name: 'created_at',
+            type: 'datetime',
+            default: 'CURRENT_TIMESTAMP',
+          },
+          {
+            name: 'updated_at',
             type: 'datetime',
             default: 'CURRENT_TIMESTAMP',
           },
