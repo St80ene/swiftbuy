@@ -8,8 +8,10 @@ import {
 } from 'typeorm';
 import { AuditLogAction, AuditLogEntity } from '../enum/audit_log.enum';
 
-export class InitialSwiftBuySchema1789000000000 implements MigrationInterface {
-  name = 'InitialSwiftBuySchema1789000000000';
+export class InitialSchema1783699991545 implements MigrationInterface {
+  name: string = 'InitialSchema1783699991545';
+
+  transaction: boolean | undefined = true;
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     /**
