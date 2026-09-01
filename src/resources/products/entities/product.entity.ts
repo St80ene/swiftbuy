@@ -4,6 +4,8 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -12,6 +14,7 @@ import { CloudinaryImage } from '../../../utils/helpers/cloudinary/cloudinary.se
 import { IsEnum } from 'class-validator';
 import { ProductSource } from '../../product_sources/entities/product_source.entity';
 import { Stocks } from '../../stocks/entities/stock.entity';
+import { Category } from '../../categories/entities/category.entity';
 
 export enum UomType {
   UNIT = 'UNIT',
@@ -112,6 +115,17 @@ export class Product extends BaseEntity {
 
   @OneToOne(() => Stocks, (stock) => stock.product)
   stock!: Stocks;
+
+  @Column({ type: 'char', length: 36, nullable: true })
+  category_id?: string;
+
+  @ManyToOne(() => Category, (category) => category.products, {
+    nullable: true,
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
+  @JoinColumn({ name: 'category_id' })
+  category?: Category;
 
   @CreateDateColumn({
     type: 'datetime',

@@ -4,11 +4,13 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { CloudinaryImage } from '../../../utils/helpers/cloudinary/cloudinary.service';
 import { BusinessSettingsEntity } from './business_settings.entity';
+import { Category } from '../../categories/entities/category.entity';
 
 @Entity({ name: 'businesses' })
 export class Business extends BaseEntity {
@@ -41,6 +43,9 @@ export class Business extends BaseEntity {
   // Type is set to 'json' to fully comply with multi-version MySQL engines
   @Column({ type: 'json', nullable: true })
   settings?: BusinessSettingsEntity;
+
+  @OneToMany(() => Category, (category) => category.business)
+  categories!: Category[];
 
   @CreateDateColumn({
     type: 'datetime',
