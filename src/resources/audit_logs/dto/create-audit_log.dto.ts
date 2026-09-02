@@ -1,5 +1,8 @@
 import { IsEnum, IsObject, IsOptional, IsUUID } from 'class-validator';
-import { AuditLogAction, AuditLogEntity } from '../../../enum/audit_log.enum';
+import {
+  AuditLogAction,
+  AuditLogEntity,
+} from '../../../common/enum/audit_log.enum';
 import { MaxObjectSize } from '../../../common/validators/max_object_size.validator';
 
 export class CreateAuditLogDto {

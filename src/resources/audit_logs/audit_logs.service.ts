@@ -5,7 +5,7 @@ import { AuditLogQueryDto } from './dto/auditlog_query.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AuditLog } from './entities/audit_log.entity';
 import { ApiResponse, successResponse } from '../../utils/response.utils';
-import { AuditLogEntity } from '../../enum/audit_log.enum';
+import { AuditLogEntity } from '../../common/enum/audit_log.enum';
 import {
   BasePaginationQueryDto,
   PaginationMeta,

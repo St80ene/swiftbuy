@@ -7,7 +7,7 @@ import {
 } from 'typeorm';
 import { User } from '../../resources/users/entities/user.entity';
 import { RolePermissions } from './role_permissions.entity';
-import { UserRole } from '../../enum/user_role.enum';
+import { UserRole } from '../../common/enum/user_role.enum';
 import { IsEnum } from 'class-validator';
 
 @Entity({ name: 'roles' })

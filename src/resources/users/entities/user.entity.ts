@@ -36,19 +36,19 @@ export class User extends BaseEntity {
 
   @Column({
     type: 'varchar',
-    length: 20,
+    length: 36,
   })
   role_id!: string;
 
   @Column({
     type: 'varchar',
-    length: 20,
+    length: 36,
   })
   business_id!: string;
 
   @Column({
     type: 'varchar',
-    length: 20,
+    length: 36,
   })
   store_id!: string;
 

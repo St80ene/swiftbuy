@@ -7,7 +7,10 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { AuditLogAction, AuditLogEntity } from '../../../enum/audit_log.enum';
+import {
+  AuditLogAction,
+  AuditLogEntity,
+} from '../../../common/enum/audit_log.enum';
 import { Business } from '../../business/entities/business.entity';
 import { Store } from '../../stores/entities/store.entity';
 

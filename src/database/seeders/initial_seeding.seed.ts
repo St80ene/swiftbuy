@@ -2,7 +2,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 import { User } from '../../resources/users/entities/user.entity';
 import { Role } from '../../auth/entities/role.entity';
-import { UserRole } from '../../enum/user_role.enum';
+import { UserRole } from '../../common/enum/user_role.enum';
 import { Permission } from '../../auth/entities/permission.entity';
 import { UserAuth } from '../../auth/entities/user_auth.entity';
 import { passwordHasher } from '../../utils/helpers/password_hasher';

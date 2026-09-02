@@ -2,15 +2,16 @@ import {
   Column,
   Entity,
   JoinColumn,
-  JoinTable,
   ManyToMany,
   ManyToOne,
   PrimaryGeneratedColumn,
+  Unique,
 } from 'typeorm';
 import { Role } from './role.entity';
 import { Permission } from './permission.entity';
 
 @Entity({ name: 'role_permissions' })
+@Unique(['role_id', 'permission_id'])
 export class RolePermissions {
   constructor(props?: Partial<RolePermissions>) {
     if (props) {
@@ -35,12 +36,8 @@ export class RolePermissions {
   role!: Role;
 
   @ManyToMany(() => Permission)
-  @JoinTable({
-    name: 'role_permissions',
-    joinColumn: { name: 'role_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'permission_id', referencedColumnName: 'id' },
-  })
-  permissions!: Permission[];
+  @JoinColumn({ name: 'role_permissions' })
+  permission!: Permission;
 
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   createdAt!: Date;

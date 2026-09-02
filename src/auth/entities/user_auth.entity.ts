@@ -1,15 +1,27 @@
 import { Exclude } from 'class-transformer';
-import { PrimaryGeneratedColumn, Column, Entity } from 'typeorm';
+import {
+  PrimaryGeneratedColumn,
+  Column,
+  Entity,
+  JoinColumn,
+  OneToOne,
+} from 'typeorm';
+import { User } from '../../resources/users/entities/user.entity';
 
 @Entity()
 export class UserAuth {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ type: 'varchar', length: 36 })
+  @Column({ type: 'varchar', length: 36, unique: true })
   user_id!: string;
 
-  @Column({ type: 'varchar', length: 255, select: false, nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 255,
+    select: false,
+    nullable: true,
+  })
   @Exclude()
   password?: string | null;
 
@@ -48,6 +60,10 @@ export class UserAuth {
 
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;
+
+  @OneToOne(() => User)
+  @JoinColumn({ name: 'user_id' })
+  user!: User;
 
   @Column({
     type: 'datetime',

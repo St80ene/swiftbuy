@@ -7,7 +7,10 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { AuditLogAction, AuditLogEntity } from '../../../enum/audit_log.enum';
+import {
+  AuditLogAction,
+  AuditLogEntity,
+} from '../../../common/enum/audit_log.enum';
 import { Type } from 'class-transformer';
 import { MaxObjectSize } from '../../../common/validators/max_object_size.validator';
 
