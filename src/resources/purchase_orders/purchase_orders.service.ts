@@ -14,14 +14,20 @@ import {
   PurchaseOrderStatus,
 } from './entities/purchase_order.entity';
 import { PurchaseOrderItem } from './entities/purchase_order_item.entity';
-import { BasePaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import {
+  BasePaginationQueryDto,
+  PurchaseOrderPaginationQueryDto,
+} from '../../common/dto/pagination-query.dto';
 import { Product } from '../products/entities/product.entity';
 import { ProductSource } from '../product_sources/entities/product_source.entity';
-import { ApiResponse, successResponse } from '../../utils/response.utils';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { getPaginationOptions } from '../../utils/helpers/get_pagination_options.util';
 import { SuppliersService } from '../suppliers/suppliers.service';
 import { DashboardCard } from '../dashboard/interfaces/initial_interface';
+import { getPaginationOptions } from '../../common/utils/helpers/get_pagination_options.util';
+import {
+  ApiResponse,
+  successResponse,
+} from '../../common/utils/response.utils';
 
 @Injectable()
 export class PurchaseOrdersService {
@@ -102,7 +108,7 @@ export class PurchaseOrdersService {
   }
 
   // READ ALL: Find matching orders
-  async findAll(paginationQuery: BasePaginationQueryDto) {
+  async findAll(paginationQuery: PurchaseOrderPaginationQueryDto) {
     const {
       page = 1,
       limit = 10,
@@ -128,7 +134,7 @@ export class PurchaseOrdersService {
     const [orders, totalItems] =
       await this.purchaseOrderRepository.findAndCount({
         relations: { items: true },
-        order: { createdAt: 'DESC' },
+        order: { created_at: 'DESC' },
         skip: skip,
         take: limit,
         where: findWhere,

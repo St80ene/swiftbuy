@@ -12,13 +12,14 @@ import { FindOptionsWhere, Repository } from 'typeorm';
 import { Business } from './entities/business.entity';
 import { CreateBusinessDto } from './dto/create-business.dto';
 import { UpdateBusinessDto } from './dto/update-business.dto';
-
-import { ApiResponse, successResponse } from '../../utils/response.utils';
-
 import {
-  CloudinaryImage,
   CloudinaryService,
-} from '../../utils/helpers/cloudinary/cloudinary.service';
+  CloudinaryImage,
+} from '../../common/utils/helpers/cloudinary/cloudinary.service';
+import {
+  ApiResponse,
+  successResponse,
+} from '../../common/utils/response.utils';
 
 @Injectable()
 export class BusinessesService {

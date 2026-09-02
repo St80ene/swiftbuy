@@ -4,13 +4,16 @@ import { CreateAuditLogDto } from './dto/create-audit_log.dto';
 import { AuditLogQueryDto } from './dto/auditlog_query.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AuditLog } from './entities/audit_log.entity';
-import { ApiResponse, successResponse } from '../../utils/response.utils';
 import { AuditLogEntity } from '../../common/enum/audit_log.enum';
 import {
   BasePaginationQueryDto,
   PaginationMeta,
 } from '../../common/dto/pagination-query.dto';
-import { getPaginationOptions } from '../../utils/helpers/get_pagination_options.util';
+import { getPaginationOptions } from '../../common/utils/helpers/get_pagination_options.util';
+import {
+  ApiResponse,
+  successResponse,
+} from '../../common/utils/response.utils';
 
 @Injectable()
 export class AuditLogsService {
@@ -125,7 +128,7 @@ export class AuditLogsService {
         entityId,
       },
       order: {
-        createdAt: 'DESC',
+        created_at: 'DESC',
       },
       skip,
       take: limitNumber,

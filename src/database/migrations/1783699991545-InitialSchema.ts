@@ -6,277 +6,160 @@ import {
   TableIndex,
   TableUnique,
 } from 'typeorm';
+
 import {
   AuditLogAction,
   AuditLogEntity,
 } from '../../common/enum/audit_log.enum';
 
 export class InitialSchema1783699991545 implements MigrationInterface {
-  name: string = 'InitialSchema1783699991545';
+  name = 'InitialSchema1783699991545';
 
-  transaction: boolean | undefined = true;
+  transaction = true;
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     /**
      * ============================================================
      * BUSINESSES
      * ============================================================
-     *
-     * Root tenant.
-     *
-     * Everything business-specific ultimately belongs to a
-     * business either directly or through a store.
      */
+
     await queryRunner.createTable(
       new Table({
         name: 'businesses',
         columns: [
-          /**
-           * ==========================================================
-           * IDENTITY
-           * ==========================================================
-           */
           {
             name: 'id',
             type: 'varchar',
             length: '36',
             isPrimary: true,
           },
-
-          /**
-           * Legal registered name.
-           *
-           * Example:
-           * "Essenoh Plastics & Packaging Limited"
-           */
           {
             name: 'legal_name',
             type: 'varchar',
             length: '255',
           },
-
-          /**
-           * Customer-facing/business display name.
-           *
-           * Example:
-           * "Essenoh Plastics"
-           */
           {
             name: 'display_name',
             type: 'varchar',
             length: '255',
           },
-
-          /**
-           * Business registration number.
-           *
-           * In Nigeria this could be CAC registration number.
-           */
           {
             name: 'registration_number',
             type: 'varchar',
             length: '100',
             isNullable: true,
           },
-
-          /**
-           * Tax identification number.
-           */
           {
             name: 'tax_identification_number',
             type: 'varchar',
             length: '100',
             isNullable: true,
           },
-
-          /**
-           * ==========================================================
-           * BUSINESS TYPE
-           * ==========================================================
-           */
           {
             name: 'business_type',
             type: 'varchar',
             length: '50',
             isNullable: true,
           },
-
-          /**
-           * ==========================================================
-           * CONTACT
-           * ==========================================================
-           */
           {
             name: 'email',
             type: 'varchar',
             length: '255',
             isNullable: true,
           },
-
           {
             name: 'phone_number',
             type: 'varchar',
             length: '30',
             isNullable: true,
           },
-
           {
             name: 'website',
             type: 'varchar',
             length: '255',
             isNullable: true,
           },
-
-          /**
-           * ==========================================================
-           * PRIMARY ADDRESS
-           * ==========================================================
-           *
-           * This represents the business/head-office address.
-           *
-           * Individual stores have their own addresses.
-           */
           {
             name: 'address_line_1',
             type: 'varchar',
             length: '255',
             isNullable: true,
           },
-
           {
             name: 'address_line_2',
             type: 'varchar',
             length: '255',
             isNullable: true,
           },
-
           {
             name: 'city',
             type: 'varchar',
             length: '100',
             isNullable: true,
           },
-
           {
             name: 'state',
             type: 'varchar',
             length: '100',
             isNullable: true,
           },
-
           {
             name: 'country',
             type: 'varchar',
             length: '100',
             default: "'NG'",
           },
-
           {
             name: 'postal_code',
             type: 'varchar',
             length: '20',
             isNullable: true,
           },
-
-          /**
-           * ==========================================================
-           * BRANDING
-           * ==========================================================
-           */
           {
             name: 'logo',
             type: 'json',
             isNullable: true,
           },
-
-          /**
-           * ==========================================================
-           * BUSINESS CONFIGURATION
-           * ==========================================================
-           */
-
-          /**
-           * ISO 4217 currency code.
-           *
-           * NGN
-           * USD
-           * GBP
-           */
           {
             name: 'currency',
             type: 'varchar',
             length: '3',
             default: "'NGN'",
           },
-
-          /**
-           * IANA timezone.
-           *
-           * Example:
-           * Africa/Lagos
-           */
           {
             name: 'timezone',
             type: 'varchar',
             length: '50',
             default: "'Africa/Lagos'",
           },
-
-          /**
-           * Application locale.
-           *
-           * Example:
-           * en-NG
-           */
           {
             name: 'locale',
             type: 'varchar',
             length: '10',
             default: "'en-NG'",
           },
-
-          /**
-           * Tax configuration.
-           *
-           * Kept flexible because tax requirements can evolve.
-           */
           {
             name: 'tax_settings',
             type: 'json',
             isNullable: true,
           },
-
-          /**
-           * Inventory/business configuration.
-           *
-           * Example:
-           * - low stock notification settings
-           * - approval requirements
-           * - stock adjustment settings
-           */
           {
             name: 'settings',
             type: 'json',
             isNullable: true,
           },
-          /**
-           * ==========================================================
-           * TIMESTAMPS
-           * ==========================================================
-           */
           {
             name: 'created_at',
             type: 'datetime',
             default: 'CURRENT_TIMESTAMP',
           },
-
           {
             name: 'updated_at',
             type: 'datetime',
             default: 'CURRENT_TIMESTAMP',
             onUpdate: 'CURRENT_TIMESTAMP',
           },
-
           {
             name: 'deleted_at',
             type: 'datetime',
@@ -289,18 +172,10 @@ export class InitialSchema1783699991545 implements MigrationInterface {
 
     /**
      * ============================================================
-     * STORES / BRANCHES
+     * STORES
      * ============================================================
-     *
-     * A business can have multiple stores/branches.
-     *
-     * Example:
-     *
-     * Business A
-     * ├── Lekki Store
-     * ├── Yaba Store
-     * └── Ikeja Store
      */
+
     await queryRunner.createTable(
       new Table({
         name: 'stores',
@@ -348,7 +223,7 @@ export class InitialSchema1783699991545 implements MigrationInterface {
             name: 'country',
             type: 'varchar',
             length: '100',
-            isNullable: true,
+            default: "'NG'",
           },
           {
             name: 'phone_number',
@@ -397,24 +272,20 @@ export class InitialSchema1783699991545 implements MigrationInterface {
       }),
     );
 
-    await queryRunner.createIndices('stores', [
+    await queryRunner.createIndex(
+      'stores',
       new TableIndex({
         name: 'IDX_stores_business',
         columnNames: ['business_id'],
       }),
-      new TableIndex({
-        name: 'IDX_stores_business_active',
-        columnNames: ['business_id'],
-      }),
-    ]);
+    );
 
     /**
      * ============================================================
      * ROLES
      * ============================================================
-     *
-     * Global RBAC definitions.
      */
+
     await queryRunner.createTable(
       new Table({
         name: 'roles',
@@ -458,6 +329,7 @@ export class InitialSchema1783699991545 implements MigrationInterface {
      * PERMISSIONS
      * ============================================================
      */
+
     await queryRunner.createTable(
       new Table({
         name: 'permissions',
@@ -501,6 +373,7 @@ export class InitialSchema1783699991545 implements MigrationInterface {
      * ROLE PERMISSIONS
      * ============================================================
      */
+
     await queryRunner.createTable(
       new Table({
         name: 'role_permissions',
@@ -550,12 +423,8 @@ export class InitialSchema1783699991545 implements MigrationInterface {
      * ============================================================
      * USERS
      * ============================================================
-     *
-     * Users belong to a business.
-     *
-     * store_id is nullable because some users are business-wide,
-     * e.g. an administrator.
      */
+
     await queryRunner.createTable(
       new Table({
         name: 'users',
@@ -672,9 +541,8 @@ export class InitialSchema1783699991545 implements MigrationInterface {
      * ============================================================
      * USER AUTH
      * ============================================================
-     *
-     * Authentication/security data is separated from user identity.
      */
+
     await queryRunner.createTable(
       new Table({
         name: 'user_auth',
@@ -774,6 +642,7 @@ export class InitialSchema1783699991545 implements MigrationInterface {
      * CATEGORIES
      * ============================================================
      */
+
     await queryRunner.createTable(
       new Table({
         name: 'categories',
@@ -848,10 +717,11 @@ export class InitialSchema1783699991545 implements MigrationInterface {
      * PRODUCTS
      * ============================================================
      *
-     * Products belong to the business catalog.
+     * Product = catalog definition.
      *
-     * Inventory is handled separately at the store level.
+     * Inventory is NOT stored here.
      */
+
     await queryRunner.createTable(
       new Table({
         name: 'products',
@@ -889,10 +759,6 @@ export class InitialSchema1783699991545 implements MigrationInterface {
             type: 'json',
             default: "'[]'",
           },
-
-          /**
-           * Unit of Measurement
-           */
           {
             name: 'uom_type',
             type: 'varchar',
@@ -911,10 +777,6 @@ export class InitialSchema1783699991545 implements MigrationInterface {
             length: '10',
             default: "'pcs'",
           },
-
-          /**
-           * Pricing
-           */
           {
             name: 'cost_price',
             type: 'decimal',
@@ -928,25 +790,11 @@ export class InitialSchema1783699991545 implements MigrationInterface {
             precision: 10,
             scale: 2,
           },
-
-          /**
-           * Current stock.
-           *
-           * Kept for compatibility with the current product model.
-           * Stock management should be the only module allowed to
-           * update this value.
-           */
-          {
-            name: 'stock_quantity',
-            type: 'int',
-            default: 0,
-          },
           {
             name: 'reorder_level',
             type: 'int',
             default: 5,
           },
-
           {
             name: 'status',
             type: 'enum',
@@ -1013,6 +861,7 @@ export class InitialSchema1783699991545 implements MigrationInterface {
      * SUPPLIERS
      * ============================================================
      */
+
     await queryRunner.createTable(
       new Table({
         name: 'suppliers',
@@ -1087,16 +936,8 @@ export class InitialSchema1783699991545 implements MigrationInterface {
      * ============================================================
      * PRODUCT SOURCES
      * ============================================================
-     *
-     * A product can have multiple suppliers.
-     *
-     * Example:
-     *
-     * Product A
-     * ├── Supplier X
-     * ├── Supplier Y
-     * └── Supplier Z
      */
+
     await queryRunner.createTable(
       new Table({
         name: 'product_sources',
@@ -1184,14 +1025,14 @@ export class InitialSchema1783699991545 implements MigrationInterface {
 
     /**
      * ============================================================
-     * STOCKS
+     * STOCK BALANCES
      * ============================================================
      *
-     * Stock belongs to a store.
+     * Stores the CURRENT quantity of a product in a store.
      *
-     * Business inventory is therefore the aggregation of inventory
-     * across all stores belonging to the business.
+     * There should only be ONE balance row for a product/store pair.
      */
+
     await queryRunner.createTable(
       new Table({
         name: 'stocks',
@@ -1213,32 +1054,8 @@ export class InitialSchema1783699991545 implements MigrationInterface {
             length: '36',
           },
           {
-            name: 'type',
-            type: 'varchar',
-            length: '50',
-            default: "'INFLOW'",
-          },
-          {
-            name: 'reason',
-            type: 'varchar',
-            length: '100',
-            default: "'SUPPLIER_RESTOCK'",
-          },
-          {
             name: 'quantity',
             type: 'int',
-          },
-          {
-            name: 'unit_cost_price',
-            type: 'decimal',
-            precision: 10,
-            scale: 2,
-          },
-          {
-            name: 'unit_selling_price',
-            type: 'decimal',
-            precision: 10,
-            scale: 2,
             default: 0,
           },
           {
@@ -1250,6 +1067,7 @@ export class InitialSchema1783699991545 implements MigrationInterface {
             name: 'updated_at',
             type: 'datetime',
             default: 'CURRENT_TIMESTAMP',
+            onUpdate: 'CURRENT_TIMESTAMP',
           },
         ],
       }),
@@ -1275,6 +1093,14 @@ export class InitialSchema1783699991545 implements MigrationInterface {
       }),
     ]);
 
+    await queryRunner.createUniqueConstraint(
+      'stocks',
+      new TableUnique({
+        name: 'UQ_stocks_store_product',
+        columnNames: ['store_id', 'product_id'],
+      }),
+    );
+
     await queryRunner.createIndices('stocks', [
       new TableIndex({
         name: 'IDX_stocks_store',
@@ -1284,13 +1110,125 @@ export class InitialSchema1783699991545 implements MigrationInterface {
         name: 'IDX_stocks_product',
         columnNames: ['product_id'],
       }),
+    ]);
+
+    /**
+     * ============================================================
+     * STOCK MOVEMENTS
+     * ============================================================
+     *
+     * Immutable inventory history.
+     *
+     * Every change to stocks.quantity should have a corresponding
+     * movement record.
+     */
+
+    await queryRunner.createTable(
+      new Table({
+        name: 'stock_movements',
+        columns: [
+          {
+            name: 'id',
+            type: 'varchar',
+            length: '36',
+            isPrimary: true,
+          },
+          {
+            name: 'store_id',
+            type: 'varchar',
+            length: '36',
+          },
+          {
+            name: 'product_id',
+            type: 'varchar',
+            length: '36',
+          },
+          {
+            name: 'type',
+            type: 'varchar',
+            length: '30',
+          },
+          {
+            name: 'reason',
+            type: 'varchar',
+            length: '100',
+          },
+          {
+            name: 'quantity',
+            type: 'int',
+          },
+          {
+            name: 'unit_cost_price',
+            type: 'decimal',
+            precision: 10,
+            scale: 2,
+          },
+          {
+            name: 'unit_selling_price',
+            type: 'decimal',
+            precision: 10,
+            scale: 2,
+            default: 0,
+          },
+          {
+            name: 'created_by_id',
+            type: 'varchar',
+            length: '36',
+            isNullable: true,
+          },
+          {
+            name: 'created_at',
+            type: 'datetime',
+            default: 'CURRENT_TIMESTAMP',
+          },
+        ],
+      }),
+      true,
+    );
+
+    await queryRunner.createForeignKeys('stock_movements', [
+      new TableForeignKey({
+        name: 'FK_stock_movements_store',
+        columnNames: ['store_id'],
+        referencedTableName: 'stores',
+        referencedColumnNames: ['id'],
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
+      }),
+      new TableForeignKey({
+        name: 'FK_stock_movements_product',
+        columnNames: ['product_id'],
+        referencedTableName: 'products',
+        referencedColumnNames: ['id'],
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
+      }),
+      new TableForeignKey({
+        name: 'FK_stock_movements_created_by',
+        columnNames: ['created_by_id'],
+        referencedTableName: 'users',
+        referencedColumnNames: ['id'],
+        onDelete: 'SET NULL',
+        onUpdate: 'CASCADE',
+      }),
+    ]);
+
+    await queryRunner.createIndices('stock_movements', [
       new TableIndex({
-        name: 'IDX_stocks_store_product',
+        name: 'IDX_stock_movements_store',
+        columnNames: ['store_id'],
+      }),
+      new TableIndex({
+        name: 'IDX_stock_movements_product',
+        columnNames: ['product_id'],
+      }),
+      new TableIndex({
+        name: 'IDX_stock_movements_store_product',
         columnNames: ['store_id', 'product_id'],
       }),
       new TableIndex({
-        name: 'IDX_stocks_product_created_at',
-        columnNames: ['product_id', 'created_at'],
+        name: 'IDX_stock_movements_created_at',
+        columnNames: ['created_at'],
       }),
     ]);
 
@@ -1298,9 +1236,8 @@ export class InitialSchema1783699991545 implements MigrationInterface {
      * ============================================================
      * PURCHASE ORDERS
      * ============================================================
-     *
-     * A purchase order belongs to a store.
      */
+
     await queryRunner.createTable(
       new Table({
         name: 'purchase_orders',
@@ -1433,6 +1370,7 @@ export class InitialSchema1783699991545 implements MigrationInterface {
      * PURCHASE ORDER ITEMS
      * ============================================================
      */
+
     await queryRunner.createTable(
       new Table({
         name: 'purchase_order_items',
@@ -1502,12 +1440,8 @@ export class InitialSchema1783699991545 implements MigrationInterface {
      * ============================================================
      * AUDIT LOGS
      * ============================================================
-     *
-     * Business is required.
-     *
-     * Store is nullable because an action can happen at business
-     * level or store level.
      */
+
     await queryRunner.createTable(
       new Table({
         name: 'audit_logs',
@@ -1647,41 +1581,21 @@ export class InitialSchema1783699991545 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    /**
-     * Reverse dependency order.
-     *
-     * `dropTable(..., true)` automatically removes foreign keys
-     * and indices associated with the table.
-     */
-
     await queryRunner.dropTable('audit_logs', true);
-
     await queryRunner.dropTable('purchase_order_items', true);
-
     await queryRunner.dropTable('purchase_orders', true);
-
+    await queryRunner.dropTable('stock_movements', true);
     await queryRunner.dropTable('stocks', true);
-
     await queryRunner.dropTable('product_sources', true);
-
     await queryRunner.dropTable('suppliers', true);
-
     await queryRunner.dropTable('products', true);
-
     await queryRunner.dropTable('categories', true);
-
     await queryRunner.dropTable('user_auth', true);
-
     await queryRunner.dropTable('users', true);
-
     await queryRunner.dropTable('role_permissions', true);
-
     await queryRunner.dropTable('permissions', true);
-
     await queryRunner.dropTable('roles', true);
-
     await queryRunner.dropTable('stores', true);
-
     await queryRunner.dropTable('businesses', true);
   }
 }

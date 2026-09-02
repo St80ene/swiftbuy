@@ -8,14 +8,20 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { CloudinaryImage } from '../../../utils/helpers/cloudinary/cloudinary.service';
 import { BusinessSettingsEntity } from './business_settings.entity';
 import { Category } from '../../categories/entities/category.entity';
 import { User } from '../../users/entities/user.entity';
 import { Product } from '../../products/entities/product.entity';
 import { AuditLog } from '../../audit_logs/entities/audit_log.entity';
 import { Store } from '../../stores/entities/store.entity';
+import { CloudinaryImage } from '../../../common/utils/helpers/cloudinary/cloudinary.service';
+import { IsEnum } from 'class-validator';
 
+export enum BusinessStatus {
+  ACTIVE = 'ACTIVE',
+  SUSPENDED = 'SUSPENDED',
+  ARCHIVED = 'ARCHIVED',
+}
 @Entity({ name: 'businesses' })
 export class Business extends BaseEntity {
   constructor(props?: Partial<Business>) {
@@ -205,13 +211,12 @@ export class Business extends BaseEntity {
   // ==========================================================
   // LIFECYCLE
   // ==========================================================
-
-  @Column({
-    type: 'enum',
-    enum: ['ACTIVE', 'SUSPENDED', 'ARCHIVED'],
-    default: 'ACTIVE',
+  @IsEnum(BusinessStatus, {
+    message:
+      'Invalid status type. Must be one of: ACTIVE, SUSPENDED, ARCHIVED.',
   })
-  status!: 'ACTIVE' | 'SUSPENDED' | 'ARCHIVED';
+  @Column({ type: 'varchar', length: 20, default: BusinessStatus.ACTIVE })
+  status!: BusinessStatus;
 
   // ==========================================================
   // RELATIONSHIPS

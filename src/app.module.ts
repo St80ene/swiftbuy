@@ -9,7 +9,6 @@ import { BusinessesModule } from './resources/business/business.module';
 import { StocksModule } from './resources/stocks/stock.module';
 import { UsersModule } from './resources/users/users.module';
 import { ProductsModule } from './resources/products/products.module';
-import { CloudinaryModule } from './utils/helpers/cloudinary/cloudinary.module';
 import { PurchaseOrdersModule } from './resources/purchase_orders/purchase_orders.module';
 import { SuppliersModule } from './resources/suppliers/suppliers.module';
 import { ProductSourcesModule } from './resources/product_sources/product_sources.module';
@@ -22,6 +21,7 @@ import { DataSource } from 'typeorm';
 import { getDatabaseConfig } from './database/config/getDatabaseConfig';
 import { CategoriesModule } from './resources/categories/categories.module';
 import { StoresModule } from './resources/stores/stores.module';
+import { CloudinaryModule } from './common/utils/helpers/cloudinary/cloudinary.module';
 @Module({
   imports: [
     ConfigModule.forRoot({

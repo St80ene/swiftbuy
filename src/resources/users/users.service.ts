@@ -10,9 +10,12 @@ import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { ChangeUserRoleDto, CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { ApiResponse, successResponse } from '../../utils/response.utils';
 import { Role } from '../../auth/entities/role.entity';
 import { UserRole } from '../../common/enum/user_role.enum';
+import {
+  ApiResponse,
+  successResponse,
+} from '../../common/utils/response.utils';
 
 export interface JwtUser {
   id: string;
@@ -54,7 +57,7 @@ export class UsersService {
   ): Promise<ApiResponse<User | null>> {
     // Check if the email already exists in the database
     const exists = await this.userRepository.findOne({
-      where: { email: createUserDto.email },
+      where: { business_email: createUserDto.email },
     });
 
     if (exists) {
@@ -103,14 +106,11 @@ export class UsersService {
       const limitNumber = Math.max(1, Number(limit) || 10);
       const skip = (pageNumber - 1) * limitNumber;
 
-      console.log('gotten here first');
       const [users, totalItems] = await this.userRepository.findAndCount({
         take: limitNumber,
         skip: skip,
-        order: { createdAt: 'DESC' },
+        order: { created_at: 'DESC' },
       });
-
-      console.log('gotten here');
 
       return successResponse('Users listed successfully', {
         users,
