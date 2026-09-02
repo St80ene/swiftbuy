@@ -9,9 +9,12 @@ import { FindManyOptions, Repository } from 'typeorm';
 import { ProductSource } from './entities/product_source.entity';
 import { CreateProductSourceDto } from './dto/create-product_source.dto';
 import { UpdateProductSourceDto } from './dto/update-product_source.dto';
-import { ApiResponse, successResponse } from '../../utils/response.utils';
-import { getPaginationOptions } from '../../utils/helpers/get_pagination_options.util';
 import { BasePaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { getPaginationOptions } from '../../common/utils/helpers/get_pagination_options.util';
+import {
+  ApiResponse,
+  successResponse,
+} from '../../common/utils/response.utils';
 
 @Injectable()
 export class ProductSourcesService {

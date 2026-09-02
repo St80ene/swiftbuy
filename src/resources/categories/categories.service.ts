@@ -10,10 +10,13 @@ import { Business } from '../business/entities/business.entity';
 import { Category, CATEGORY_SORT_FIELDS } from './entities/category.entity';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
-import { ApiResponse, successResponse } from '../../utils/response.utils';
 import { CategoryPaginationQueryDto } from './dto/category_pagination_dto.dto';
 import { PaginationMeta } from '../../common/dto/pagination-query.dto';
-import { getPaginationOptions } from '../../utils/helpers/get_pagination_options.util';
+import { getPaginationOptions } from '../../common/utils/helpers/get_pagination_options.util';
+import {
+  ApiResponse,
+  successResponse,
+} from '../../common/utils/response.utils';
 
 @Injectable()
 export class CategoriesService {

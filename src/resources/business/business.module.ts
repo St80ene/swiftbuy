@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BusinessesService } from './business.service';
 import { BusinessController } from './business.controller';
-import { CloudinaryService } from '../../utils/helpers/cloudinary/cloudinary.service';
 import { Business } from './entities/business.entity';
+import { CloudinaryService } from '../../common/utils/helpers/cloudinary/cloudinary.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Business])],

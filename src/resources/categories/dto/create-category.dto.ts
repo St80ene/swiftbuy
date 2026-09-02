@@ -6,7 +6,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { NormalizeString } from '../../../utils/helpers/formatters';
+import { NormalizeString } from '../../../common/utils/helpers/formatters';
 
 export class CreateCategoryDto {
   @NormalizeString()

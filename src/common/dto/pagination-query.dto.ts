@@ -82,6 +82,24 @@ export class ProductPaginationQueryDto extends BasePaginationQueryDto {
   [key: string]: unknown;
 }
 
+export class PurchaseOrderPaginationQueryDto extends BasePaginationQueryDto {
+  @IsOptional()
+  @IsIn(['ASC', 'DESC'])
+  order?: 'ASC' | 'DESC' = 'DESC';
+
+  @IsOptional()
+  @IsIn(['DRAFT', 'APPROVED', 'RECEIVED', 'CANCELLED'])
+  status?: string;
+
+  @IsOptional()
+  @IsString()
+  approved_by_id?: string;
+
+  @IsOptional()
+  @IsString()
+  supplier_name?: string;
+}
+
 export const AUDIT_LOG_SORT_FIELDS = {
   createdAt: 'audit_log.createdAt',
   updatedAt: 'audit_log.updatedAt',

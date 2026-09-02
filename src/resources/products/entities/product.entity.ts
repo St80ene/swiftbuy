@@ -10,12 +10,12 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { CloudinaryImage } from '../../../utils/helpers/cloudinary/cloudinary.service';
 import { IsEnum } from 'class-validator';
 import { ProductSource } from '../../product_sources/entities/product_source.entity';
 import { Stocks } from '../../stocks/entities/stock.entity';
 import { Category } from '../../categories/entities/category.entity';
 import { Business } from '../../business/entities/business.entity';
+import { CloudinaryImage } from '../../../common/utils/helpers/cloudinary/cloudinary.service';
 
 export enum UomType {
   UNIT = 'UNIT',

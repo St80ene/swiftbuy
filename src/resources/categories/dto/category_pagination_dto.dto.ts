@@ -1,6 +1,6 @@
 import { IsIn, IsOptional } from 'class-validator';
-import { NormalizeString } from '../../../utils/helpers/formatters';
 import * as categoryEntity from '../entities/category.entity';
+import { NormalizeString } from '../../../common/utils/helpers/formatters';
 
 export class CategoryPaginationQueryDto {
   @IsOptional()

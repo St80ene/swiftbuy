@@ -12,11 +12,6 @@ import { Product } from './entities/product.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import {
-  CloudinaryService,
-  CloudinaryImage,
-} from '../../utils/helpers/cloudinary/cloudinary.service';
-import { ApiResponse, successResponse } from '../../utils/response.utils';
-import {
   MutationReason,
   MutationType,
   Stocks,
@@ -27,14 +22,22 @@ import {
   PRODUCT_SORT_FIELDS,
   ProductPaginationQueryDto,
 } from '../../common/dto/pagination-query.dto';
-import { getPaginationOptions } from '../../utils/helpers/get_pagination_options.util';
 import { DashboardCard } from '../dashboard/interfaces/initial_interface';
 import {
   AuditLogAction,
   AuditLogEntity,
 } from '../../common/enum/audit_log.enum';
-import convertToIntegerBaseUnit from '../../utils/helpers/cloudinary/convertToBaseInteger';
 import { AuditLog } from '../audit_logs/entities/audit_log.entity';
+import {
+  CloudinaryService,
+  CloudinaryImage,
+} from '../../common/utils/helpers/cloudinary/cloudinary.service';
+import convertToIntegerBaseUnit from '../../common/utils/helpers/cloudinary/convertToBaseInteger';
+import { getPaginationOptions } from '../../common/utils/helpers/get_pagination_options.util';
+import {
+  ApiResponse,
+  successResponse,
+} from '../../common/utils/response.utils';
 
 @Injectable()
 export class ProductsService {

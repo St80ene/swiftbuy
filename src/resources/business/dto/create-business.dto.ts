@@ -9,11 +9,11 @@ import {
 } from 'class-validator';
 
 import { BusinessSettingsEntity } from '../entities/business_settings.entity';
-import { CloudinaryImage } from '../../../utils/helpers/cloudinary/cloudinary.service';
+import { CloudinaryImage } from '../../../common/utils/helpers/cloudinary/cloudinary.service';
 import {
-  NormalizeEmail,
   NormalizeString,
-} from '../../../utils/helpers/formatters';
+  NormalizeEmail,
+} from '../../../common/utils/helpers/formatters';
 
 export class CreateBusinessDto {
   // ==========================================================
