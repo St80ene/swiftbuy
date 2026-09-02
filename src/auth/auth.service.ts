@@ -44,15 +44,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    const { accessToken } = await this.generateTokens(user);
-
-    const auth = await this.userAuthRepository.findOneBy({
-      user_id: user.id,
-    });
-
-    if (!auth) {
-      throw new Error('UserAuth record not found for user');
-    }
+    const { accessToken, refreshToken } = await this.generateTokens(user);
 
     await this.auditLogService.create({
       action: AuditLogAction.LOGIN,
@@ -63,6 +55,7 @@ export class AuthService {
     return {
       user,
       accessToken,
+      refreshToken,
     };
   }
 
@@ -195,25 +188,48 @@ export class AuthService {
   }
 
   async refresh(refreshToken: string) {
-    const payload: Record<string, any> =
-      await this.jwtService.verifyAsync(refreshToken);
+    let payload: { sub: string };
+
+    try {
+      payload = await this.jwtService.verifyAsync(refreshToken, {
+        secret: process.env.JWT_REFRESH_SECRET,
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
 
     const auth = await this.userAuthRepository.findOne({
       where: {
-        user_id: payload?.sub as string,
+        user_id: payload.sub,
       },
       select: {
+        user_id: true,
         refresh_token: true,
       },
     });
 
-    if (!auth) throw new UnauthorizedException();
+    if (!auth?.refresh_token) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
 
-    const user = await this.userRepository.findOneBy({
-      id: payload?.sub as string,
+    const validRefreshToken = await bcrypt.compare(
+      refreshToken,
+      auth.refresh_token,
+    );
+
+    if (!validRefreshToken) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    const user = await this.userRepository.findOne({
+      where: {
+        id: payload.sub,
+      },
     });
 
-    if (!user) throw new UnauthorizedException();
+    if (!user || !user.is_active) {
+      throw new UnauthorizedException('User is not active');
+    }
 
     return this.generateTokens(user);
   }
@@ -300,16 +316,28 @@ export class AuthService {
   private async generateTokens(user: User) {
     const payload = {
       sub: user.id,
-      email: user.business_email,
-      role_id: user.role_id,
     };
 
     const accessToken = await this.jwtService.signAsync(payload, {
       expiresIn: '15m',
     });
 
+    const refreshToken = await this.jwtService.signAsync(payload, {
+      expiresIn: '7d',
+    });
+
+    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+
+    await this.userAuthRepository.update(
+      { user_id: user.id },
+      {
+        refresh_token: refreshTokenHash,
+      },
+    );
+
     return {
       accessToken,
+      refreshToken,
     };
   }
 }
