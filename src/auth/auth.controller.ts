@@ -1,25 +1,26 @@
-import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import { AuthGuard } from './guards/auth.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Public } from '../common/decorators/public.decorator';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('auth/login')
+  @Public()
+  @Post('login')
   login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
 
-  @UseGuards(AuthGuard)
-  @Get('auth/logout/:id')
-  logout(@Param('id') id: string) {
-    return this.authService.logout(id);
+  @Post('logout')
+  logout(@CurrentUser('id') userId: string) {
+    return this.authService.logout(userId);
   }
 
-  @Get(':id')
-  resetPassword(@Param('id') id: string) {
-    // return this.authService.re(id);
+  @Get('profile')
+  getProfile(@CurrentUser('id') id: string) {
+    return this.authService.me(id);
   }
 }

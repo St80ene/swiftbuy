@@ -29,7 +29,10 @@ import {
 } from '../../common/dto/pagination-query.dto';
 import { getPaginationOptions } from '../../utils/helpers/get_pagination_options.util';
 import { DashboardCard } from '../dashboard/interfaces/initial_interface';
-import { AuditLogAction, AuditLogEntity } from '../../enum/audit_log.enum';
+import {
+  AuditLogAction,
+  AuditLogEntity,
+} from '../../common/enum/audit_log.enum';
 import convertToIntegerBaseUnit from '../../utils/helpers/cloudinary/convertToBaseInteger';
 import { AuditLog } from '../audit_logs/entities/audit_log.entity';
 

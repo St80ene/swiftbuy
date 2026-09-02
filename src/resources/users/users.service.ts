@@ -12,7 +12,7 @@ import { ChangeUserRoleDto, CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ApiResponse, successResponse } from '../../utils/response.utils';
 import { Role } from '../../auth/entities/role.entity';
-import { UserRole } from '../../enum/user_role.enum';
+import { UserRole } from '../../common/enum/user_role.enum';
 
 export interface JwtUser {
   id: string;

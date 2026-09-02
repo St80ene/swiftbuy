@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { LoginDto } from './dto/login.dto';
-import { AuditLogAction, AuditLogEntity } from '../enum/audit_log.enum';
+import { AuditLogAction, AuditLogEntity } from '../common/enum/audit_log.enum';
 import { AuditLogsService } from '../resources/audit_logs/audit_logs.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../resources/users/entities/user.entity';
@@ -44,7 +44,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    const { accessToken, refreshToken } = await this.generateTokens(user);
+    const { accessToken } = await this.generateTokens(user);
 
     const auth = await this.userAuthRepository.findOneBy({
       user_id: user.id,
@@ -54,16 +54,6 @@ export class AuthService {
       throw new Error('UserAuth record not found for user');
     }
 
-    const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
-
-    if (!hashedRefreshToken) {
-      throw new Error('Failed to hash refresh token');
-    }
-
-    auth['refresh_token'] = hashedRefreshToken;
-
-    await this.userAuthRepository.save(auth);
-
     await this.auditLogService.create({
       action: AuditLogAction.LOGIN,
       entity: AuditLogEntity.USER,
@@ -72,7 +62,6 @@ export class AuthService {
 
     return {
       user,
-      refreshToken,
       accessToken,
     };
   }
@@ -98,7 +87,7 @@ export class AuthService {
 
   async forgotPassword({ email }: ForgotPasswordDto) {
     const user = await this.userRepository.findOne({
-      where: { email },
+      where: { business_email: email },
     });
 
     if (!user) {
@@ -128,25 +117,10 @@ export class AuthService {
       await this.userAuthRepository.save(auth);
     }
 
-    // await this.mailService.sendResetPassword(user.email, token);
-
     return {
       message: 'If an account exists, a reset link has been sent.',
     };
   }
-
-  //   auth.password_reset_token = await bcrypt.hash(token);
-
-  //   auth.password_reset_expires_at = addMinutes(new Date(), 30);
-
-  //   await this.userAuthRepository.save(auth);
-
-  //   await this.mailService.sendResetPassword(user.email, token);
-
-  //   return {
-  //     message: 'If an account exists, a reset link has been sent.',
-  //   };
-  // }
 
   async passwordReset(dto: ResetPasswordDto) {
     const auth = await this.userAuthRepository.findOne({
@@ -245,22 +219,27 @@ export class AuthService {
   }
 
   async me(userId: string) {
-    return this.userRepository.findOne({
-      where: { id: userId },
-      relations: {
-        role: { rolePermissions: true },
+    const user = await this.userRepository.findOne({
+      where: {
+        id: userId,
       },
       select: {
         id: true,
-        email: true,
-        role: {
-          id: true,
-          name: true,
-          description: true,
-          rolePermissions: true,
-        },
+        first_name: true,
+        last_name: true,
+        business_email: true,
+        role_id: true,
+        business_id: true,
+        store_id: true,
+        is_active: true,
       },
     });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    return user;
   }
 
   private async validateCredentials(
@@ -268,7 +247,7 @@ export class AuthService {
     password: string,
   ): Promise<User> {
     const user = await this.userRepository.findOne({
-      where: { email },
+      where: { business_email: email },
       relations: {
         role: true,
       },
@@ -321,29 +300,16 @@ export class AuthService {
   private async generateTokens(user: User) {
     const payload = {
       sub: user.id,
+      email: user.business_email,
       role_id: user.role_id,
-      email: user.email,
     };
 
     const accessToken = await this.jwtService.signAsync(payload, {
       expiresIn: '15m',
     });
 
-    if (!accessToken) {
-      throw new Error('Failed to generate access token');
-    }
-
-    const refreshToken: string = await this.jwtService.signAsync(payload, {
-      expiresIn: '7d',
-    });
-
-    if (!refreshToken) {
-      throw new Error('Failed to generate refresh token');
-    }
-
     return {
       accessToken,
-      refreshToken,
     };
   }
 }

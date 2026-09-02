@@ -1,4 +1,5 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { RolePermissions } from './role_permissions.entity';
 
 @Entity({ name: 'permissions' })
 export class Permission {
@@ -16,6 +17,12 @@ export class Permission {
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   description?: string;
+
+  @OneToMany(
+    () => RolePermissions,
+    (rolePermission) => rolePermission.permission,
+  )
+  rolePermissions!: RolePermissions[];
 
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   createdAt!: Date;
