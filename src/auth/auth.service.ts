@@ -54,16 +54,6 @@ export class AuthService {
       throw new Error('UserAuth record not found for user');
     }
 
-    // const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
-
-    // if (!hashedRefreshToken) {
-    //   throw new Error('Failed to hash refresh token');
-    // }
-
-    // auth['refresh_token'] = hashedRefreshToken;
-
-    // await this.userAuthRepository.save(auth);
-
     await this.auditLogService.create({
       action: AuditLogAction.LOGIN,
       entity: AuditLogEntity.USER,
@@ -127,25 +117,10 @@ export class AuthService {
       await this.userAuthRepository.save(auth);
     }
 
-    // await this.mailService.sendResetPassword(user.email, token);
-
     return {
       message: 'If an account exists, a reset link has been sent.',
     };
   }
-
-  //   auth.password_reset_token = await bcrypt.hash(token);
-
-  //   auth.password_reset_expires_at = addMinutes(new Date(), 30);
-
-  //   await this.userAuthRepository.save(auth);
-
-  //   await this.mailService.sendResetPassword(user.email, token);
-
-  //   return {
-  //     message: 'If an account exists, a reset link has been sent.',
-  //   };
-  // }
 
   async passwordReset(dto: ResetPasswordDto) {
     const auth = await this.userAuthRepository.findOne({
@@ -261,7 +236,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException('User not found');
     }
 
     return user;

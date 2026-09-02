@@ -6,7 +6,10 @@ import {
   TableIndex,
   TableUnique,
 } from 'typeorm';
-import { AuditLogAction, AuditLogEntity } from '../enum/audit_log.enum';
+import {
+  AuditLogAction,
+  AuditLogEntity,
+} from '../../common/enum/audit_log.enum';
 
 export class InitialSchema1783699991545 implements MigrationInterface {
   name: string = 'InitialSchema1783699991545';

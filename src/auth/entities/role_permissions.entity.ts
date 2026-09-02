@@ -35,8 +35,10 @@ export class RolePermissions {
   @JoinColumn({ name: 'role_id' })
   role!: Role;
 
-  @ManyToMany(() => Permission)
-  @JoinColumn({ name: 'role_permissions' })
+  @ManyToOne(() => Permission, (permission) => permission.rolePermissions, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'permission_id' })
   permission!: Permission;
 
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
