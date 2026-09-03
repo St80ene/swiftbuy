@@ -1,26 +1,29 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { LoginDto } from './dto/login.dto';
-import { AuditLogAction, AuditLogEntity } from '../common/enum/audit_log.enum';
-import { AuditLogsService } from '../resources/audit_logs/audit_logs.service';
 import { InjectRepository } from '@nestjs/typeorm';
-import { User } from '../resources/users/entities/user.entity';
 import { Repository } from 'typeorm';
 import { randomBytes } from 'crypto';
 import * as bcrypt from 'bcrypt';
-import { BadRequestException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { addMinutes } from 'date-fns';
+
+import { LoginDto } from './dto/login.dto';
 import {
   ResetPasswordDto,
   ChangePasswordDto,
   ForgotPasswordDto,
 } from './dto/password.dto';
-import { JwtService } from '@nestjs/jwt';
-import { addMinutes } from 'date-fns';
+
+import { User } from '../resources/users/entities/user.entity';
 import { UserAuth } from './entities/user_auth.entity';
+
+import { AuditLogsService } from '../resources/audit_logs/audit_logs.service';
+import { AuditLogAction, AuditLogEntity } from '../common/enum/audit_log.enum';
 
 @Injectable()
 export class AuthService {
@@ -64,14 +67,18 @@ export class AuthService {
       user_id: userId,
     });
 
-    if (!auth)
+    if (!auth) {
       return {
         message: 'Logged out successfully',
       };
+    }
 
-    auth.refresh_token = null;
-
-    await this.userAuthRepository.save(auth);
+    await this.userAuthRepository.update(
+      { user_id: userId },
+      {
+        refresh_token: null,
+      },
+    );
 
     return {
       message: 'Logged out successfully',
@@ -80,7 +87,9 @@ export class AuthService {
 
   async forgotPassword({ email }: ForgotPasswordDto) {
     const user = await this.userRepository.findOne({
-      where: { business_email: email },
+      where: {
+        business_email: email,
+      },
     });
 
     if (!user) {
@@ -99,15 +108,18 @@ export class AuthService {
       const newAuth = this.userAuthRepository.create({
         user_id: user.id,
         password_reset_token: await bcrypt.hash(token, 10),
-        password_reset_expires_at: new Date(),
+        password_reset_expires_at: addMinutes(new Date(), 30),
       });
 
       await this.userAuthRepository.save(newAuth);
     } else {
-      auth.password_reset_token = await bcrypt.hash(token, 10);
-      auth.password_reset_expires_at = addMinutes(new Date(), 30);
-
-      await this.userAuthRepository.save(auth);
+      await this.userAuthRepository.update(
+        { user_id: user.id },
+        {
+          password_reset_token: await bcrypt.hash(token, 10),
+          password_reset_expires_at: addMinutes(new Date(), 30),
+        },
+      );
     }
 
     return {
@@ -117,8 +129,13 @@ export class AuthService {
 
   async passwordReset(dto: ResetPasswordDto) {
     const auth = await this.userAuthRepository.findOne({
-      where: { password_reset_token: dto.token },
+      where: {
+        password_reset_token: dto.token,
+      },
       select: {
+        id: true,
+        user_id: true,
+        password: true,
         password_reset_token: true,
         password_reset_expires_at: true,
       },
@@ -128,23 +145,30 @@ export class AuthService {
       !auth ||
       !auth.password_reset_expires_at ||
       auth.password_reset_expires_at < new Date()
-    )
+    ) {
       throw new BadRequestException('Invalid or expired token');
+    }
 
     const valid = await bcrypt.compare(
       dto.token,
       auth.password_reset_token as string,
     );
 
-    if (!valid) throw new BadRequestException();
+    if (!valid) {
+      throw new BadRequestException('Invalid or expired token');
+    }
 
-    auth.password = await bcrypt.hash(dto.newPassword, 10);
+    const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
 
-    auth.password_reset_token = null;
-    auth.password_reset_expires_at = null;
-    auth.refresh_token = null;
-
-    await this.userAuthRepository.save(auth);
+    await this.userAuthRepository.update(
+      { user_id: auth.user_id },
+      {
+        password: hashedPassword,
+        password_reset_token: null,
+        password_reset_expires_at: null,
+        refresh_token: null,
+      },
+    );
 
     return {
       message: 'Password reset successful',
@@ -153,14 +177,21 @@ export class AuthService {
 
   async changePassword(userId: string, dto: ChangePasswordDto) {
     const { currentPassword, newPassword } = dto;
-    const auth: UserAuth | null = await this.userAuthRepository.findOne({
-      where: { user_id: userId },
+
+    const auth = await this.userAuthRepository.findOne({
+      where: {
+        user_id: userId,
+      },
       select: {
+        id: true,
+        user_id: true,
         password: true,
       },
     });
 
-    if (!auth) throw new UnauthorizedException('User not found');
+    if (!auth) {
+      throw new UnauthorizedException('User not found');
+    }
 
     if (currentPassword === newPassword) {
       throw new BadRequestException(
@@ -173,14 +204,19 @@ export class AuthService {
       auth.password as string,
     );
 
-    if (!valid)
+    if (!valid) {
       throw new UnauthorizedException('Current password is incorrect');
+    }
 
-    auth.password = await bcrypt.hash(dto.newPassword, 10);
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    auth.refresh_token = null;
-
-    await this.userAuthRepository.save(auth);
+    await this.userAuthRepository.update(
+      { user_id: userId },
+      {
+        password: hashedPassword,
+        refresh_token: null,
+      },
+    );
 
     return {
       message: 'Password updated successfully',
@@ -263,26 +299,33 @@ export class AuthService {
     password: string,
   ): Promise<User> {
     const user = await this.userRepository.findOne({
-      where: { business_email: email },
+      where: {
+        business_email: email,
+      },
       relations: {
         role: true,
       },
     });
 
-    if (!user) throw new UnauthorizedException('Invalid email or password');
+    if (!user) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
 
     const auth = await this.userAuthRepository.findOne({
       where: {
         user_id: user.id,
       },
       select: {
+        user_id: true,
         password: true,
         failed_login_attempts: true,
         locked_until: true,
       },
     });
 
-    if (!auth) throw new UnauthorizedException();
+    if (!auth) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
 
     if (auth.locked_until && auth.locked_until > new Date()) {
       throw new ForbiddenException('Account temporarily locked');
@@ -291,24 +334,30 @@ export class AuthService {
     const valid = await bcrypt.compare(password, auth.password as string);
 
     if (!valid) {
-      auth.failed_login_attempts = auth.failed_login_attempts
-        ? auth.failed_login_attempts + 1
-        : 1;
+      const failedLoginAttempts = (auth.failed_login_attempts ?? 0) + 1;
 
-      if (auth?.failed_login_attempts >= 5) {
-        auth.locked_until = addMinutes(new Date(), 15);
-      }
+      const lockedUntil =
+        failedLoginAttempts >= 5 ? addMinutes(new Date(), 15) : null;
 
-      await this.userAuthRepository.save(auth);
+      await this.userAuthRepository.update(
+        { user_id: user.id },
+        {
+          failed_login_attempts: failedLoginAttempts,
+          locked_until: lockedUntil,
+        },
+      );
 
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    auth.failed_login_attempts = 0;
-    auth.locked_until = null;
-    auth.last_login_at = new Date();
-
-    await this.userAuthRepository.save(auth);
+    await this.userAuthRepository.update(
+      { user_id: user.id },
+      {
+        failed_login_attempts: 0,
+        locked_until: null,
+        last_login_at: new Date(),
+      },
+    );
 
     return user;
   }
@@ -329,7 +378,9 @@ export class AuthService {
     const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
 
     await this.userAuthRepository.update(
-      { user_id: user.id },
+      {
+        user_id: user.id,
+      },
       {
         refresh_token: refreshTokenHash,
       },

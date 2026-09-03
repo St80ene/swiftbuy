@@ -15,7 +15,7 @@ export class AuthController {
   }
 
   @Public()
-  @Post('login')
+  @Post('/login')
   login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
