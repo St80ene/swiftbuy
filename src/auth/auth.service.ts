@@ -24,6 +24,7 @@ import { UserAuth } from './entities/user_auth.entity';
 
 import { AuditLogsService } from '../resources/audit_logs/audit_logs.service';
 import { AuditLogAction, AuditLogEntity } from '../common/enum/audit_log.enum';
+import { ApiResponse, successResponse } from '../common/utils/response.utils';
 
 @Injectable()
 export class AuthService {
@@ -149,7 +150,7 @@ export class AuthService {
       throw new BadRequestException('Invalid or expired token');
     }
 
-    const valid = await bcrypt.compare(
+    const valid = await this.comparePasswords(
       dto.token,
       auth.password_reset_token as string,
     );
@@ -175,7 +176,10 @@ export class AuthService {
     };
   }
 
-  async changePassword(userId: string, dto: ChangePasswordDto) {
+  async changePassword(
+    userId: string,
+    dto: ChangePasswordDto,
+  ): Promise<ApiResponse<string>> {
     const { currentPassword, newPassword } = dto;
 
     const auth = await this.userAuthRepository.findOne({
@@ -199,7 +203,7 @@ export class AuthService {
       );
     }
 
-    const valid = await bcrypt.compare(
+    const valid = await this.comparePasswords(
       currentPassword,
       auth.password as string,
     );
@@ -218,9 +222,7 @@ export class AuthService {
       },
     );
 
-    return {
-      message: 'Password updated successfully',
-    };
+    return successResponse('Password changed successfully');
   }
 
   async refresh(refreshToken: string) {
@@ -331,7 +333,10 @@ export class AuthService {
       throw new ForbiddenException('Account temporarily locked');
     }
 
-    const valid = await bcrypt.compare(password, auth.password as string);
+    const valid = await this.comparePasswords(
+      password,
+      auth.password as string,
+    );
 
     if (!valid) {
       const failedLoginAttempts = (auth.failed_login_attempts ?? 0) + 1;
@@ -390,5 +395,12 @@ export class AuthService {
       accessToken,
       refreshToken,
     };
+  }
+
+  private async comparePasswords(
+    plainPassword: string,
+    hashedPassword: string,
+  ): Promise<boolean> {
+    return bcrypt.compare(plainPassword, hashedPassword);
   }
 }
