@@ -1,18 +1,25 @@
 import {
+  IsEmail,
   IsNotEmpty,
   IsString,
   IsStrongPassword,
   MinLength,
 } from 'class-validator';
 import { passwordOptions } from './password.dto';
+import {
+  NormalizeEmail,
+  NormalizeString,
+} from '../../common/utils/helpers/formatters';
 
 export class LoginDto {
   @IsNotEmpty()
-  @IsString()
+  @IsEmail({ allow_underscores: true }, { message: 'Invalid email address' })
+  @NormalizeEmail()
   email!: string;
 
   @IsNotEmpty()
   @IsString()
+  @NormalizeString()
   @MinLength(8, { message: 'Password must be at least 8 characters long.' })
   @IsStrongPassword(
     {

@@ -1,66 +1,117 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
-  Delete,
-  ParseUUIDPipe,
+  Controller,
   DefaultValuePipe,
+  Get,
+  Param,
   ParseIntPipe,
+  ParseUUIDPipe,
+  Patch,
+  Post,
   Query,
-  Request,
 } from '@nestjs/common';
+
 import { UsersService } from './users.service';
 import { ChangeUserRoleDto, CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+
 import { UserRole } from '../../common/enum/user_role.enum';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+
+import { User } from './entities/user.entity';
+
+import { ApiResponse } from '../../common/utils/response.utils';
+import type { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  /**
+   * Create user
+   */
   @Post()
-  // @UseGuards(AuthGuard('jwt'))
-  // @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
-  create(@Request() req: Request, @Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto, req['user']);
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  create(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() createUserDto: CreateUserDto,
+  ): Promise<ApiResponse<User | null>> {
+    return this.usersService.create(createUserDto, currentUser);
   }
 
+  /**
+   * Get users
+   */
   @Get()
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   findAll(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe)
+    page: number,
+
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe)
+    limit: number,
   ) {
-    return this.usersService.findAll({ page, limit });
+    return this.usersService.findAll({
+      page,
+      limit,
+    });
   }
 
+  /**
+   * Get one user
+   */
+  @Get(':id')
+  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<ApiResponse<User>> {
+    return this.usersService.findOne(id);
+  }
+
+  /**
+   * Update own profile
+   */
   @Patch(':id')
-  // @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   update(
-    @Request() req: Request,
+    @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateUserDto: UpdateUserDto,
-  ) {
-    return this.usersService.update(id, updateUserDto, req['user']);
+  ): Promise<ApiResponse<User>> {
+    return this.usersService.update(id, updateUserDto, currentUser);
   }
 
-  // @Patch(':id/role')
-  // @Roles(UserRole.SUPER_ADMIN)
-  changeRole(
-    @Request() req: Request,
-    @Param('id') id: string,
-    @Body() dto: ChangeUserRoleDto,
-    // @CurrentUser() currentUser: JwtUser,
-  ) {
-    return this.usersService.changeRole(id, dto, req['user']);
-  }
-
-  @Delete(':id')
+  /**
+   * Change user role
+   */
+  @Patch(':id/role')
   @Roles(UserRole.SUPER_ADMIN)
-  remove(@Request() req: Request, @Param('id', ParseUUIDPipe) id: string) {
-    return this.usersService.remove(id, req['user']);
+  changeRole(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ChangeUserRoleDto,
+  ): Promise<ApiResponse<User>> {
+    return this.usersService.changeRole(id, dto, currentUser);
+  }
+
+  /**
+   * Deactivate user
+   */
+  @Patch(':id/deactivate')
+  @Roles(UserRole.SUPER_ADMIN)
+  deactivate(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ApiResponse<null>> {
+    return this.usersService.deactivate(id, currentUser);
+  }
+
+  /**
+   * Activate user
+   */
+  @Patch(':id/activate')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  activate(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ApiResponse<User>> {
+    return this.usersService.activate(id, currentUser);
   }
 }

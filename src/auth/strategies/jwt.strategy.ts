@@ -26,6 +26,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
     const user = await this.userRepository
       .createQueryBuilder('user')
+      .leftJoinAndSelect('user.role', 'role')
       .select([
         'user.id',
         'user.business_email',
@@ -54,6 +55,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       roleId: user.role_id,
       businessId: user.business_id,
       storeId: user.store_id,
+      role: user.role,
     };
   }
 }

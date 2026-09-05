@@ -2,74 +2,60 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
-  InternalServerErrorException,
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+
 import { User } from './entities/user.entity';
 import { ChangeUserRoleDto, CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+
 import { Role } from '../../auth/entities/role.entity';
 import { UserRole } from '../../common/enum/user_role.enum';
+
 import {
   ApiResponse,
   successResponse,
 } from '../../common/utils/response.utils';
 
-export interface JwtUser {
-  id: string;
-  role: UserRole;
-}
+import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+
     @InjectRepository(Role)
     private readonly roleRepository: Repository<Role>,
   ) {}
 
   /**
-   * ─── CREATE USER ───
-   */
-
-  /**
-   * @param createUserDto - Data Transfer Object containing user creation details
-   * @param currentUser - The currently authenticated user making the request
-   * @returns ApiResponse containing the created User or null
-   * @throws ConflictException if the email is already registered
-   * @throws ForbiddenException if a non-SUPER_ADMIN tries to create a SUPER_ADMIN
-   * @throws InternalServerErrorException if there is an error during user creation
-   * @remarks This method checks for existing users, validates roles, and saves the new user to the database. It ensures that only authorized users can create certain roles.
-   * @example
-   * const createUserDto: CreateUserDto = {
-   *   first_name: 'John',
-   *   last_name: 'Doe',
-   *   email: 'example@example.com',
-   *   role_id: 'role-id'
-   * };
+   * Create a new user.
    */
   async create(
     createUserDto: CreateUserDto,
-    currentUser: JwtUser,
+    currentUser: AuthenticatedUser,
   ): Promise<ApiResponse<User | null>> {
-    // Check if the email already exists in the database
-    const exists = await this.userRepository.findOne({
-      where: { business_email: createUserDto.email },
+    const existingUser = await this.userRepository.findOne({
+      where: {
+        business_email: createUserDto.email,
+      },
     });
 
-    if (exists) {
+    if (existingUser) {
       throw new ConflictException('Email already registered.');
     }
 
-    const desired_role = await this.findUserRole(createUserDto.role_id);
+    const role = await this.findUserRole(createUserDto.role_id);
 
-    // Only SUPER_ADMIN can create another SUPER_ADMIN
+    /**
+     * Only a Super Admin can create another Super Admin.
+     */
     if (
-      desired_role.name === UserRole.SUPER_ADMIN &&
-      currentUser.role !== UserRole.SUPER_ADMIN
+      role.name === UserRole.SUPER_ADMIN &&
+      currentUser?.role.name !== UserRole.SUPER_ADMIN
     ) {
       throw new ForbiddenException(
         'You are not authorized to create a Super Admin.',
@@ -78,13 +64,10 @@ export class UsersService {
 
     const user = this.userRepository.create({
       ...createUserDto,
-      role_id: createUserDto.role_id,
+      business_email: createUserDto.email,
+      role_id: role.id,
+      is_active: true,
     });
-
-    // await this.userAuthRepository.save({
-    //   user_id: user.id, // Associate the UserAuth with the newly created User
-    //   password: hashedPassword,
-    // });
 
     await this.userRepository.save(user);
 
@@ -92,140 +75,230 @@ export class UsersService {
   }
 
   /**
-   * ─── FIND ALL ───
+   * Get paginated users.
    */
-  async findAll({
-    page,
-    limit,
-  }: {
-    page?: number;
-    limit?: number;
-  }): Promise<ApiResponse<{ users: User[]; meta: any }>> {
-    try {
-      const pageNumber = Math.max(1, Number(page) || 1);
-      const limitNumber = Math.max(1, Number(limit) || 10);
-      const skip = (pageNumber - 1) * limitNumber;
+  async findAll({ page, limit }: { page?: number; limit?: number }): Promise<
+    ApiResponse<{
+      users: User[];
+      meta: {
+        totalItems: number;
+        itemCount: number;
+        itemsPerPage: number;
+        totalPages: number;
+        currentPage: number;
+        hasNextPage: boolean;
+        hasPreviousPage: boolean;
+      };
+    }>
+  > {
+    const pageNumber = Math.max(1, Number(page) || 1);
+    const limitNumber = Math.max(1, Number(limit) || 10);
 
-      const [users, totalItems] = await this.userRepository.findAndCount({
-        take: limitNumber,
-        skip: skip,
-        order: { created_at: 'DESC' },
-      });
+    const skip = (pageNumber - 1) * limitNumber;
 
-      return successResponse('Users listed successfully', {
-        users,
-        meta: {
-          totalItems,
-          itemCount: users.length,
-          itemsPerPage: limitNumber,
-          totalPages: Math.ceil(totalItems / limitNumber),
-          currentPage: pageNumber,
-          hasNextPage: pageNumber < Math.ceil(totalItems / limitNumber),
-          hasPreviousPage: pageNumber > 1,
-        },
-      });
-    } catch (error) {
-      console.log('Error fetching users:', error);
-
-      throw new InternalServerErrorException('Failed to fetch users.');
-    }
-  }
-
-  /**
-   * ─── UPDATE USER ───
-   */
-  async update(id: string, dto: UpdateUserDto, currentUser: JwtUser) {
-    const user = await this.findUser(id);
-
-    if (currentUser.id !== id) {
-      throw new ForbiddenException();
-    }
-
-    // Only Super Admin can change roles
-    // if (dto.role_id && currentUser.role !== UserRole.SUPER_ADMIN) {
-    //   throw new ForbiddenException('Only Super Admin can change user roles.');
-    // }
-
-    this.userRepository.merge(user, dto);
-
-    const updated = await this.userRepository.save(user);
-
-    return successResponse('User updated successfully', updated);
-  }
-
-  private async findUser(id: string): Promise<User> {
-    const user = await this.userRepository.findOne({
-      where: { id },
-      relations: { role: true },
+    const [users, totalItems] = await this.userRepository.findAndCount({
+      take: limitNumber,
+      skip,
+      order: {
+        created_at: 'DESC',
+      },
     });
 
-    if (!user) {
-      throw new NotFoundException('User record not found');
-    }
+    const totalPages = Math.ceil(totalItems / limitNumber);
 
-    return user;
+    return successResponse('Users listed successfully', {
+      users,
+      meta: {
+        totalItems,
+        itemCount: users.length,
+        itemsPerPage: limitNumber,
+        totalPages,
+        currentPage: pageNumber,
+        hasNextPage: pageNumber < totalPages,
+        hasPreviousPage: pageNumber > 1,
+      },
+    });
   }
 
   /**
-   * ─── REMOVE USER ───
+   * Update user profile.
+   *
+   * Role and activation state are handled through their
+   * dedicated endpoints.
    */
-  async remove(id: string, currentUser: JwtUser) {
-    const user = await this.findUser(id);
+  async update(
+    id: string,
+    dto: UpdateUserDto,
+    currentUser: AuthenticatedUser,
+  ): Promise<ApiResponse<User>> {
+    if (currentUser.id !== id) {
+      throw new ForbiddenException(
+        'You are not authorized to update this user.',
+      );
+    }
+    const { data: user } = await this.findOne(id);
+
+    if (!user) throw new NotFoundException('User record not found.');
+
+    if (dto.email && dto.email !== user.business_email) {
+      const existingUser = await this.userRepository.findOne({
+        where: {
+          business_email: dto.email,
+        },
+      });
+
+      if (existingUser && existingUser.id !== id) {
+        throw new ConflictException('Email already registered.');
+      }
+
+      user.business_email = dto.email;
+    }
+
+    this.userRepository.merge(user, {
+      ...dto,
+      business_email: undefined,
+    });
+
+    const updatedUser = await this.userRepository.save(user);
+
+    return successResponse('User updated successfully', updatedUser);
+  }
+
+  /**
+   * Deactivate a user.
+   *
+   * This does not delete the database record.
+   */
+  async deactivate(
+    id: string,
+    currentUser: AuthenticatedUser,
+  ): Promise<ApiResponse<null>> {
+    const { data: user } = await this.findOne(id);
+
+    if (!user) throw new NotFoundException('User record not found.');
 
     if (user.id === currentUser.id) {
-      throw new ForbiddenException('You cannot delete your own account.');
+      throw new ForbiddenException('You cannot deactivate your own account.');
     }
 
     if (user.role?.name === UserRole.SUPER_ADMIN) {
-      throw new ForbiddenException('A Super Admin cannot be deleted.');
+      throw new ForbiddenException('A Super Admin cannot be deactivated.');
     }
 
-    await this.userRepository.softRemove(user);
-
-    return successResponse('User deleted successfully', null);
-  }
-
-  async changeRole(id: string, dto: ChangeUserRoleDto, currentUser: JwtUser) {
-    const user = await this.findUser(id);
-
-    const newRole = await this.findUserRole(dto.role_id);
-
-    /**
-     * Prevent accidental removal of the last
-     * Super Admin.
-     */
-    if (
-      user.role?.name === UserRole.SUPER_ADMIN &&
-      newRole.name !== UserRole.SUPER_ADMIN
-    ) {
-      const superAdminCount = await this.userRepository.count({
-        where: {
-          role_id: user.role_id,
-        },
-      });
-
-      if (superAdminCount <= 1) {
-        throw new ForbiddenException('The last Super Admin cannot be demoted.');
-      }
+    if (!user.is_active) {
+      throw new ConflictException('User account is already deactivated.');
     }
 
-    user.role_id = newRole.id;
+    user.is_active = false;
 
     await this.userRepository.save(user);
 
-    return successResponse('User role updated successfully', user);
+    return successResponse('User deactivated successfully', null);
   }
 
-  private async findUserRole(id: string): Promise<Role> {
-    // call role service to fetch the required role from database
-    const desired_role = await this.roleRepository.findOne({
-      where: { id },
+  /**
+   * Activate a user.
+   */
+  async activate(
+    id: string,
+    currentUser: AuthenticatedUser,
+  ): Promise<ApiResponse<User>> {
+    const { data: user } = await this.findOne(id);
+
+    if (
+      currentUser?.role.name !== UserRole.SUPER_ADMIN &&
+      currentUser?.role.name !== UserRole.ADMIN
+    ) {
+      throw new ForbiddenException('You are not authorized to activate users.');
+    }
+
+    if (!user) throw new NotFoundException('User record not found.');
+
+    if (user.id === currentUser.id) {
+      throw new ForbiddenException('You cannot activate your own account.');
+    }
+
+    if (user.is_active) {
+      throw new ConflictException('User account is already active.');
+    }
+
+    user.is_active = true;
+
+    const updatedUser = await this.userRepository.save(user);
+
+    return successResponse('User activated successfully', updatedUser);
+  }
+
+  /**
+   * Change a user's role.
+   */
+  async changeRole(
+    id: string,
+    dto: ChangeUserRoleDto,
+    currentUser: AuthenticatedUser,
+  ): Promise<ApiResponse<User>> {
+    const { data: user_to_be_updated } = await this.findOne(id);
+
+    if (id === currentUser.id) {
+      throw new ForbiddenException('You cannot change your own role.');
+    }
+
+    if (!user_to_be_updated)
+      throw new NotFoundException('User record not found.');
+
+    if (user_to_be_updated.role?.name === UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException('A Super Admin role cannot be changed.');
+    }
+
+    const new_role = await this.findUserRole(dto.role_id);
+
+    if (new_role.id === user_to_be_updated.role_id) {
+      throw new ConflictException('The user already has the specified role.');
+    }
+
+    user_to_be_updated.role_id = new_role.id;
+
+    const updatedUser = await this.userRepository.save(user_to_be_updated);
+
+    return successResponse('User role updated successfully', updatedUser);
+  }
+
+  /**
+   * Find a user by ID.
+   */
+  async findOne(id: string): Promise<ApiResponse<User>> {
+    const user = await this.userRepository.findOne({
+      where: {
+        id,
+      },
+      relations: {
+        role: true,
+        business: true,
+        store: true,
+      },
     });
 
-    if (!desired_role) {
+    if (!user) {
+      throw new NotFoundException('User record not found.');
+    }
+
+    return successResponse('User retrieved successfully', user);
+  }
+
+  /**
+   * Find a role by ID.
+   */
+  private async findUserRole(id: string): Promise<Role> {
+    const role = await this.roleRepository.findOne({
+      where: {
+        id,
+      },
+    });
+
+    if (!role) {
       throw new NotFoundException('Role not found.');
     }
 
-    return desired_role;
+    return role;
   }
 }

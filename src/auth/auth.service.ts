@@ -272,7 +272,7 @@ export class AuthService {
     return this.generateTokens(user);
   }
 
-  async me(userId: string) {
+  async me(userId: string): Promise<ApiResponse<User>> {
     const user = await this.userRepository.findOne({
       where: {
         id: userId,
@@ -293,7 +293,7 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
-    return user;
+    return successResponse('User retrieved successfully', user);
   }
 
   private async validateCredentials(
@@ -333,12 +333,12 @@ export class AuthService {
       throw new ForbiddenException('Account temporarily locked');
     }
 
-    const valid = await this.comparePasswords(
+    const valid_password = await this.comparePasswords(
       password,
       auth.password as string,
     );
 
-    if (!valid) {
+    if (!valid_password) {
       const failedLoginAttempts = (auth.failed_login_attempts ?? 0) + 1;
 
       const lockedUntil =
