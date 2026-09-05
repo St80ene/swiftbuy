@@ -214,7 +214,7 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
      * Development credentials:
      *
      * Email:    admin@swiftbuy.com
-     * Password: ChangeMe123!
+     * Password: Test@123!#
      *
      * Change this before using this seed outside development.
      */

@@ -24,6 +24,7 @@ export const getDatabaseConfig = (
       database: ':memory:',
       dropSchema: true,
       synchronize: true, // Auto-syncs schema in RAM
+      logging: ['query', 'error'], // Log queries for debugging
     };
   }
 

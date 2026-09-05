@@ -6,6 +6,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { NormalizeString } from '../../common/utils/helpers/formatters';
 
 export const passwordOptions = {
   minLength: 8,
@@ -22,20 +23,22 @@ export class ResetPasswordDto {
 
   @IsString()
   @IsNotEmpty()
-  @MinLength(50)
+  @MinLength(8)
   @IsStrongPassword(passwordOptions)
   newPassword!: string;
 }
 
 export class ChangePasswordDto {
-  @IsString()
   @IsNotEmpty()
-  @MinLength(50)
+  @IsString()
+  @NormalizeString()
+  @MinLength(8)
   currentPassword!: string;
 
-  @IsString()
   @IsNotEmpty()
-  @MinLength(50)
+  @IsString()
+  @NormalizeString()
+  @MinLength(8)
   @IsStrongPassword(passwordOptions)
   newPassword!: string;
 }

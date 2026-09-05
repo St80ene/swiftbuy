@@ -1,26 +1,30 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { LoginDto } from './dto/login.dto';
-import { AuditLogAction, AuditLogEntity } from '../common/enum/audit_log.enum';
-import { AuditLogsService } from '../resources/audit_logs/audit_logs.service';
 import { InjectRepository } from '@nestjs/typeorm';
-import { User } from '../resources/users/entities/user.entity';
 import { Repository } from 'typeorm';
 import { randomBytes } from 'crypto';
 import * as bcrypt from 'bcrypt';
-import { BadRequestException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { addMinutes } from 'date-fns';
+
+import { LoginDto } from './dto/login.dto';
 import {
   ResetPasswordDto,
   ChangePasswordDto,
   ForgotPasswordDto,
 } from './dto/password.dto';
-import { JwtService } from '@nestjs/jwt';
-import { addMinutes } from 'date-fns';
+
+import { User } from '../resources/users/entities/user.entity';
 import { UserAuth } from './entities/user_auth.entity';
+
+import { AuditLogsService } from '../resources/audit_logs/audit_logs.service';
+import { AuditLogAction, AuditLogEntity } from '../common/enum/audit_log.enum';
+import { ApiResponse, successResponse } from '../common/utils/response.utils';
 
 @Injectable()
 export class AuthService {
@@ -44,15 +48,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    const { accessToken } = await this.generateTokens(user);
-
-    const auth = await this.userAuthRepository.findOneBy({
-      user_id: user.id,
-    });
-
-    if (!auth) {
-      throw new Error('UserAuth record not found for user');
-    }
+    const { accessToken, refreshToken } = await this.generateTokens(user);
 
     await this.auditLogService.create({
       action: AuditLogAction.LOGIN,
@@ -63,6 +59,7 @@ export class AuthService {
     return {
       user,
       accessToken,
+      refreshToken,
     };
   }
 
@@ -71,14 +68,18 @@ export class AuthService {
       user_id: userId,
     });
 
-    if (!auth)
+    if (!auth) {
       return {
         message: 'Logged out successfully',
       };
+    }
 
-    auth.refresh_token = null;
-
-    await this.userAuthRepository.save(auth);
+    await this.userAuthRepository.update(
+      { user_id: userId },
+      {
+        refresh_token: null,
+      },
+    );
 
     return {
       message: 'Logged out successfully',
@@ -87,7 +88,9 @@ export class AuthService {
 
   async forgotPassword({ email }: ForgotPasswordDto) {
     const user = await this.userRepository.findOne({
-      where: { business_email: email },
+      where: {
+        business_email: email,
+      },
     });
 
     if (!user) {
@@ -106,15 +109,18 @@ export class AuthService {
       const newAuth = this.userAuthRepository.create({
         user_id: user.id,
         password_reset_token: await bcrypt.hash(token, 10),
-        password_reset_expires_at: new Date(),
+        password_reset_expires_at: addMinutes(new Date(), 30),
       });
 
       await this.userAuthRepository.save(newAuth);
     } else {
-      auth.password_reset_token = await bcrypt.hash(token, 10);
-      auth.password_reset_expires_at = addMinutes(new Date(), 30);
-
-      await this.userAuthRepository.save(auth);
+      await this.userAuthRepository.update(
+        { user_id: user.id },
+        {
+          password_reset_token: await bcrypt.hash(token, 10),
+          password_reset_expires_at: addMinutes(new Date(), 30),
+        },
+      );
     }
 
     return {
@@ -124,8 +130,13 @@ export class AuthService {
 
   async passwordReset(dto: ResetPasswordDto) {
     const auth = await this.userAuthRepository.findOne({
-      where: { password_reset_token: dto.token },
+      where: {
+        password_reset_token: dto.token,
+      },
       select: {
+        id: true,
+        user_id: true,
+        password: true,
         password_reset_token: true,
         password_reset_expires_at: true,
       },
@@ -135,39 +146,56 @@ export class AuthService {
       !auth ||
       !auth.password_reset_expires_at ||
       auth.password_reset_expires_at < new Date()
-    )
+    ) {
       throw new BadRequestException('Invalid or expired token');
+    }
 
-    const valid = await bcrypt.compare(
+    const valid = await this.comparePasswords(
       dto.token,
       auth.password_reset_token as string,
     );
 
-    if (!valid) throw new BadRequestException();
+    if (!valid) {
+      throw new BadRequestException('Invalid or expired token');
+    }
 
-    auth.password = await bcrypt.hash(dto.newPassword, 10);
+    const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
 
-    auth.password_reset_token = null;
-    auth.password_reset_expires_at = null;
-    auth.refresh_token = null;
-
-    await this.userAuthRepository.save(auth);
+    await this.userAuthRepository.update(
+      { user_id: auth.user_id },
+      {
+        password: hashedPassword,
+        password_reset_token: null,
+        password_reset_expires_at: null,
+        refresh_token: null,
+      },
+    );
 
     return {
       message: 'Password reset successful',
     };
   }
 
-  async changePassword(userId: string, dto: ChangePasswordDto) {
+  async changePassword(
+    userId: string,
+    dto: ChangePasswordDto,
+  ): Promise<ApiResponse<string>> {
     const { currentPassword, newPassword } = dto;
-    const auth: UserAuth | null = await this.userAuthRepository.findOne({
-      where: { user_id: userId },
+
+    const auth = await this.userAuthRepository.findOne({
+      where: {
+        user_id: userId,
+      },
       select: {
+        id: true,
+        user_id: true,
         password: true,
       },
     });
 
-    if (!auth) throw new UnauthorizedException('User not found');
+    if (!auth) {
+      throw new UnauthorizedException('User not found');
+    }
 
     if (currentPassword === newPassword) {
       throw new BadRequestException(
@@ -175,50 +203,76 @@ export class AuthService {
       );
     }
 
-    const valid = await bcrypt.compare(
+    const valid = await this.comparePasswords(
       currentPassword,
       auth.password as string,
     );
 
-    if (!valid)
+    if (!valid) {
       throw new UnauthorizedException('Current password is incorrect');
+    }
 
-    auth.password = await bcrypt.hash(dto.newPassword, 10);
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    auth.refresh_token = null;
+    await this.userAuthRepository.update(
+      { user_id: userId },
+      {
+        password: hashedPassword,
+        refresh_token: null,
+      },
+    );
 
-    await this.userAuthRepository.save(auth);
-
-    return {
-      message: 'Password updated successfully',
-    };
+    return successResponse('Password changed successfully');
   }
 
   async refresh(refreshToken: string) {
-    const payload: Record<string, any> =
-      await this.jwtService.verifyAsync(refreshToken);
+    let payload: { sub: string };
+
+    try {
+      payload = await this.jwtService.verifyAsync(refreshToken, {
+        secret: process.env.JWT_REFRESH_SECRET,
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
 
     const auth = await this.userAuthRepository.findOne({
       where: {
-        user_id: payload?.sub as string,
+        user_id: payload.sub,
       },
       select: {
+        user_id: true,
         refresh_token: true,
       },
     });
 
-    if (!auth) throw new UnauthorizedException();
+    if (!auth?.refresh_token) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
 
-    const user = await this.userRepository.findOneBy({
-      id: payload?.sub as string,
+    const validRefreshToken = await bcrypt.compare(
+      refreshToken,
+      auth.refresh_token,
+    );
+
+    if (!validRefreshToken) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    const user = await this.userRepository.findOne({
+      where: {
+        id: payload.sub,
+      },
     });
 
-    if (!user) throw new UnauthorizedException();
+    if (!user || !user.is_active) {
+      throw new UnauthorizedException('User is not active');
+    }
 
     return this.generateTokens(user);
   }
 
-  async me(userId: string) {
+  async me(userId: string): Promise<ApiResponse<User>> {
     const user = await this.userRepository.findOne({
       where: {
         id: userId,
@@ -239,7 +293,7 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
-    return user;
+    return successResponse('User retrieved successfully', user);
   }
 
   private async validateCredentials(
@@ -247,52 +301,68 @@ export class AuthService {
     password: string,
   ): Promise<User> {
     const user = await this.userRepository.findOne({
-      where: { business_email: email },
+      where: {
+        business_email: email,
+      },
       relations: {
         role: true,
       },
     });
 
-    if (!user) throw new UnauthorizedException('Invalid email or password');
+    if (!user) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
 
     const auth = await this.userAuthRepository.findOne({
       where: {
         user_id: user.id,
       },
       select: {
+        user_id: true,
         password: true,
         failed_login_attempts: true,
         locked_until: true,
       },
     });
 
-    if (!auth) throw new UnauthorizedException();
+    if (!auth) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
 
     if (auth.locked_until && auth.locked_until > new Date()) {
       throw new ForbiddenException('Account temporarily locked');
     }
 
-    const valid = await bcrypt.compare(password, auth.password as string);
+    const valid_password = await this.comparePasswords(
+      password,
+      auth.password as string,
+    );
 
-    if (!valid) {
-      auth.failed_login_attempts = auth.failed_login_attempts
-        ? auth.failed_login_attempts + 1
-        : 1;
+    if (!valid_password) {
+      const failedLoginAttempts = (auth.failed_login_attempts ?? 0) + 1;
 
-      if (auth?.failed_login_attempts >= 5) {
-        auth.locked_until = addMinutes(new Date(), 15);
-      }
+      const lockedUntil =
+        failedLoginAttempts >= 5 ? addMinutes(new Date(), 15) : null;
 
-      await this.userAuthRepository.save(auth);
+      await this.userAuthRepository.update(
+        { user_id: user.id },
+        {
+          failed_login_attempts: failedLoginAttempts,
+          locked_until: lockedUntil,
+        },
+      );
 
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    auth.failed_login_attempts = 0;
-    auth.locked_until = null;
-    auth.last_login_at = new Date();
-
-    await this.userAuthRepository.save(auth);
+    await this.userAuthRepository.update(
+      { user_id: user.id },
+      {
+        failed_login_attempts: 0,
+        locked_until: null,
+        last_login_at: new Date(),
+      },
+    );
 
     return user;
   }
@@ -300,16 +370,37 @@ export class AuthService {
   private async generateTokens(user: User) {
     const payload = {
       sub: user.id,
-      email: user.business_email,
-      role_id: user.role_id,
     };
 
     const accessToken = await this.jwtService.signAsync(payload, {
       expiresIn: '15m',
     });
 
+    const refreshToken = await this.jwtService.signAsync(payload, {
+      expiresIn: '7d',
+    });
+
+    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+
+    await this.userAuthRepository.update(
+      {
+        user_id: user.id,
+      },
+      {
+        refresh_token: refreshTokenHash,
+      },
+    );
+
     return {
       accessToken,
+      refreshToken,
     };
+  }
+
+  private async comparePasswords(
+    plainPassword: string,
+    hashedPassword: string,
+  ): Promise<boolean> {
+    return bcrypt.compare(plainPassword, hashedPassword);
   }
 }
