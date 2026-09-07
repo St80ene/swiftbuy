@@ -457,19 +457,25 @@ export class InitialSchema1783699991545 implements MigrationInterface {
             length: '100',
           },
           {
-            name: 'business_email',
+            name: 'company_email',
             type: 'varchar',
             length: '150',
+          },
+          {
+            name: 'phone_number',
+            type: 'varchar',
+            length: '20',
+            isNullable: true,
+          },
+          {
+            name: 'profile_picture',
+            type: 'json',
+            isNullable: true,
           },
           {
             name: 'role_id',
             type: 'varchar',
             length: '36',
-          },
-          {
-            name: 'is_active',
-            type: 'boolean',
-            default: true,
           },
           {
             name: 'created_at',
@@ -518,7 +524,7 @@ export class InitialSchema1783699991545 implements MigrationInterface {
       'users',
       new TableUnique({
         name: 'UQ_users_business_email',
-        columnNames: ['business_id', 'business_email'],
+        columnNames: ['business_id', 'company_email'],
       }),
     );
 

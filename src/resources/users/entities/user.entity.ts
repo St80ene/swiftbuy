@@ -12,6 +12,7 @@ import {
 import { Role } from '../../../auth/entities/role.entity';
 import { Business } from '../../business/entities/business.entity';
 import { Store } from '../../stores/entities/store.entity';
+import { CloudinaryImage } from '../../../common/utils/helpers/cloudinary/cloudinary.service';
 
 @Entity({ name: 'users' })
 export class User extends BaseEntity {
@@ -31,8 +32,14 @@ export class User extends BaseEntity {
   @Column({ type: 'varchar', length: 100 })
   last_name!: string;
 
+  @Column({ type: 'varchar', length: 100 })
+  phone_number?: string;
+
+  @Column({ type: 'json', nullable: true })
+  profile_picture?: CloudinaryImage | null;
+
   @Column({ type: 'varchar', length: 150, unique: true })
-  business_email!: string;
+  company_email!: string;
 
   @Column({
     type: 'varchar',

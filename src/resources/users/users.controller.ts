@@ -1,15 +1,19 @@
 import {
   Body,
   Controller,
-  DefaultValuePipe,
   Get,
+  HttpStatus,
   Param,
-  ParseIntPipe,
+  ParseFilePipeBuilder,
   ParseUUIDPipe,
   Patch,
   Post,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+
+import { FileInterceptor } from '@nestjs/platform-express';
 
 import { UsersService } from './users.service';
 import { ChangeUserRoleDto, CreateUserDto } from './dto/create-user.dto';
@@ -23,6 +27,7 @@ import { User } from './entities/user.entity';
 
 import { ApiResponse } from '../../common/utils/response.utils';
 import type { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { BasePaginationQueryDto } from '../../common/dto/pagination-query.dto';
 
 @Controller('users')
 export class UsersController {
@@ -33,11 +38,26 @@ export class UsersController {
    */
   @Post()
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @UseInterceptors(FileInterceptor('profile_image'))
   create(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() createUserDto: CreateUserDto,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({
+          fileType: /(jpg|jpeg|png|webp)$/i,
+        })
+        .addMaxSizeValidator({
+          maxSize: 5 * 1024 * 1024, // 5MB
+        })
+        .build({
+          fileIsRequired: false,
+          errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+        }),
+    )
+    file?: Express.Multer.File,
   ): Promise<ApiResponse<User | null>> {
-    return this.usersService.create(createUserDto, currentUser);
+    return this.usersService.create(createUserDto, currentUser, file);
   }
 
   /**
@@ -45,17 +65,8 @@ export class UsersController {
    */
   @Get()
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
-  findAll(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe)
-    page: number,
-
-    @Query('limit', new DefaultValuePipe(10), ParseIntPipe)
-    limit: number,
-  ) {
-    return this.usersService.findAll({
-      page,
-      limit,
-    });
+  findAll(@Query() query: BasePaginationQueryDto) {
+    return this.usersService.findAll(query);
   }
 
   /**
@@ -70,12 +81,27 @@ export class UsersController {
    * Update own profile
    */
   @Patch(':id')
+  @UseInterceptors(FileInterceptor('profile_image'))
   update(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateUserDto: UpdateUserDto,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({
+          fileType: /(jpg|jpeg|png|webp)$/i,
+        })
+        .addMaxSizeValidator({
+          maxSize: 5 * 1024 * 1024, // 5MB
+        })
+        .build({
+          fileIsRequired: false,
+          errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+        }),
+    )
+    file?: Express.Multer.File,
   ): Promise<ApiResponse<User>> {
-    return this.usersService.update(id, updateUserDto, currentUser);
+    return this.usersService.update(id, updateUserDto, currentUser, file);
   }
 
   /**

@@ -5,7 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 
 import { User } from './entities/user.entity';
 import { ChangeUserRoleDto, CreateUserDto } from './dto/create-user.dto';
@@ -20,12 +20,20 @@ import {
 } from '../../common/utils/response.utils';
 
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import {
+  CloudinaryImage,
+  CloudinaryService,
+} from '../../common/utils/helpers/cloudinary/cloudinary.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+
+    private readonly dataSource: DataSource,
+
+    private readonly cloudinaryService: CloudinaryService,
 
     @InjectRepository(Role)
     private readonly roleRepository: Repository<Role>,
@@ -37,10 +45,14 @@ export class UsersService {
   async create(
     createUserDto: CreateUserDto,
     currentUser: AuthenticatedUser,
+    file?: Express.Multer.File,
   ): Promise<ApiResponse<User | null>> {
+    /**
+     * Validate/read-only operations can happen before the transaction.
+     */
     const existingUser = await this.userRepository.findOne({
       where: {
-        business_email: createUserDto.email,
+        company_email: createUserDto.company_email,
       },
     });
 
@@ -62,16 +74,75 @@ export class UsersService {
       );
     }
 
-    const user = this.userRepository.create({
-      ...createUserDto,
-      business_email: createUserDto.email,
-      role_id: role.id,
-      is_active: true,
-    });
+    const queryRunner = this.dataSource.createQueryRunner();
 
-    await this.userRepository.save(user);
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    return successResponse('User added successfully', null);
+    let profileImage: CloudinaryImage | null = null;
+
+    try {
+      /**
+       * Upload profile image to Cloudinary.
+       *
+       * Cloudinary is external to the database transaction,
+       * so it is manually cleaned up if the transaction fails.
+       */
+      if (file) {
+        profileImage = await this.cloudinaryService.uploadImage(file, 'users');
+      }
+
+      /**
+       * Explicit property mapping.
+       *
+       * Avoid spreading createUserDto directly into the entity
+       * to prevent unintended properties from being persisted.
+       */
+      const user = queryRunner.manager.create(User, {
+        first_name: createUserDto.first_name,
+        last_name: createUserDto.last_name,
+        company_email: createUserDto.company_email,
+        phone_number: createUserDto.phone_number,
+        role_id: role.id,
+        is_active: true,
+        ...(profileImage && {
+          profile_image: profileImage,
+        }),
+      });
+
+      await queryRunner.manager.save(User, user);
+
+      await queryRunner.commitTransaction();
+
+      return successResponse('User added successfully', null);
+    } catch (error) {
+      /**
+       * Roll back any database changes.
+       */
+      await queryRunner.rollbackTransaction();
+
+      /**
+       * Database transactions cannot roll back Cloudinary uploads,
+       * so remove the uploaded asset manually.
+       */
+      if (profileImage) {
+        await this.cloudinaryService
+          .deleteImage(profileImage.publicId)
+          .catch(() => null);
+      }
+
+      /**
+       * Preserve NestJS exceptions such as:
+       * ConflictException
+       * ForbiddenException
+       * NotFoundException
+       * BadRequestException
+       * etc.
+       */
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   /**
@@ -130,20 +201,24 @@ export class UsersService {
     id: string,
     dto: UpdateUserDto,
     currentUser: AuthenticatedUser,
+    file?: Express.Multer.File,
   ): Promise<ApiResponse<User>> {
     if (currentUser.id !== id) {
       throw new ForbiddenException(
         'You are not authorized to update this user.',
       );
     }
+
     const { data: user } = await this.findOne(id);
 
-    if (!user) throw new NotFoundException('User record not found.');
+    if (!user) {
+      throw new NotFoundException('User record not found.');
+    }
 
-    if (dto.email && dto.email !== user.business_email) {
+    if (dto.company_email && dto.company_email !== user.company_email) {
       const existingUser = await this.userRepository.findOne({
         where: {
-          business_email: dto.email,
+          company_email: dto.company_email,
         },
       });
 
@@ -151,17 +226,70 @@ export class UsersService {
         throw new ConflictException('Email already registered.');
       }
 
-      user.business_email = dto.email;
+      user.company_email = dto.company_email;
     }
 
-    this.userRepository.merge(user, {
-      ...dto,
-      business_email: undefined,
-    });
+    /**
+     * Keep a reference to the existing image.
+     *
+     * We only delete it from Cloudinary after the database
+     * update has successfully completed.
+     */
+    const previousProfileImage = user.profile_picture ?? null;
 
-    const updatedUser = await this.userRepository.save(user);
+    let newProfileImage: CloudinaryImage | null = null;
 
-    return successResponse('User updated successfully', updatedUser);
+    try {
+      /**
+       * Upload the new profile image if one was provided.
+       */
+      if (file) {
+        newProfileImage = await this.cloudinaryService.uploadImage(
+          file,
+          'users',
+        );
+
+        user.profile_picture = newProfileImage;
+      }
+
+      /**
+       * Explicit property mapping.
+       *
+       */
+      this.userRepository.merge(user, {
+        first_name: dto.first_name,
+        last_name: dto.last_name,
+        phone_number: dto.phone_number,
+        company_email: user.company_email,
+      });
+
+      const updatedUser = await this.userRepository.save(user);
+
+      /**
+       * Only delete the old Cloudinary image after the DB
+       * update has succeeded.
+       */
+      if (newProfileImage && previousProfileImage) {
+        await this.cloudinaryService
+          .deleteImage(previousProfileImage.publicId)
+          .catch(() => null);
+      }
+
+      return successResponse('User updated successfully', updatedUser);
+    } catch (error) {
+      /**
+       * The database update failed after uploading the new image.
+       * Remove the newly uploaded Cloudinary asset to prevent
+       * orphaned files.
+       */
+      if (newProfileImage) {
+        await this.cloudinaryService
+          .deleteImage(newProfileImage.publicId)
+          .catch(() => null);
+      }
+
+      throw error;
+    }
   }
 
   /**
