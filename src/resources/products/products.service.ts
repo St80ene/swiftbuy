@@ -85,7 +85,7 @@ export class ProductsService {
           `Uploading ${files.length} product images to Cloudinary...`,
         );
         const uploadPromises = files.map((file) =>
-          this.cloudinaryService.uploadProductImage(file, 'products'),
+          this.cloudinaryService.uploadImage(file, 'products'),
         );
         const uploadedResults = await Promise.all(uploadPromises);
         productImages.push(...uploadedResults);
@@ -243,26 +243,18 @@ export class ProductsService {
    * @throws {InternalServerErrorException} If the product cannot be retrieved.
    */
   async findOne(id: string): Promise<ApiResponse<Product>> {
-    try {
-      const product = await this.productRepository.findOne({
-        where: { id },
-        relations: { stock: true },
-      });
+    const product = await this.productRepository.findOne({
+      where: { id },
+      relations: { stock: true },
+    });
 
-      if (!product) {
-        throw new NotFoundException(
-          `Product with ID "${id}" could not be found.`,
-        );
-      }
-
-      return successResponse('Product retrieved successfully', product);
-    } catch (error) {
-      if (error instanceof NotFoundException) throw error;
-      console.error(`Error fetching product ${id}:`, error);
-      throw new InternalServerErrorException(
-        'An error occurred while retrieving the product.',
+    if (!product) {
+      throw new NotFoundException(
+        `Product with ID "${id}" could not be found.`,
       );
     }
+
+    return successResponse('Product retrieved successfully', product);
   }
 
   /**
@@ -342,7 +334,7 @@ export class ProductsService {
 
       if (files?.length) {
         const uploadPromises = files.map((file) =>
-          this.cloudinaryService.uploadProductImage(file, 'products'),
+          this.cloudinaryService.uploadImage(file, 'products'),
         );
 
         const newAssets = await Promise.all(uploadPromises);
