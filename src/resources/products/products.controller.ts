@@ -18,6 +18,8 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { ProductPaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 
 @Controller('products')
 export class ProductsController {
@@ -27,6 +29,7 @@ export class ProductsController {
   @UseInterceptors(FilesInterceptor('images', 5)) // ◄ Allow up to 5 images
   create(
     @Body() createProductDto: CreateProductDto,
+    @CurrentUser() currentUser: AuthenticatedUser,
     @UploadedFiles(
       new ParseFilePipeBuilder()
         .addFileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ })
@@ -38,30 +41,41 @@ export class ProductsController {
     )
     files?: Express.Multer.File[],
   ) {
-    return this.productsService.create(createProductDto, files);
+    return this.productsService.create(createProductDto, currentUser, files);
   }
 
   @Get()
-  findAll(@Query() paginationQuery: ProductPaginationQueryDto) {
-    return this.productsService.findAll(paginationQuery);
+  findAll(
+    @Query() paginationQuery: ProductPaginationQueryDto,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ) {
+    return this.productsService.findAll(paginationQuery, currentUser);
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.productsService.findOne(id);
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ) {
+    return this.productsService.findOne(id, currentUser);
   }
 
   @Get(':id/audit-logs')
   getProductAuditLogs(
     @Param('id', ParseUUIDPipe) productId: string,
     @Query() query: ProductPaginationQueryDto,
+    @CurrentUser() currentUser: AuthenticatedUser,
   ) {
-    return this.productsService.getProductAuditLogs(productId, query);
+    return this.productsService.getProductAuditLogs(
+      productId,
+      currentUser,
+      query,
+    );
   }
 
   @Get('inventory-health')
-  getInventoryHealth() {
-    return this.productsService.getInventoryHealth();
+  getInventoryHealth(@CurrentUser() currentUser: AuthenticatedUser) {
+    return this.productsService.getInventoryHealth(currentUser);
   }
 
   @Patch(':id')
@@ -69,13 +83,22 @@ export class ProductsController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateProductDto: UpdateProductDto,
+    @CurrentUser() currentUser: AuthenticatedUser,
     @UploadedFiles() files?: Express.Multer.File[],
   ) {
-    return this.productsService.update(id, updateProductDto, files);
+    return this.productsService.update(
+      id,
+      updateProductDto,
+      currentUser,
+      files,
+    );
   }
 
   @Delete(':id')
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.productsService.remove(id);
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ) {
+    return this.productsService.remove(id, currentUser);
   }
 }

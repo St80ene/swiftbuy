@@ -23,6 +23,14 @@ export class CreateProductDto {
   @IsOptional()
   description?: string;
 
+  @IsString()
+  @IsOptional()
+  category_id?: string;
+
+  @IsString()
+  @IsOptional()
+  business_id?: string;
+
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0.01, { message: 'Selling price must be greater than 0.' })
   @Type(() => Number) // Form-data passes everything as strings; this safely forces it to a number
