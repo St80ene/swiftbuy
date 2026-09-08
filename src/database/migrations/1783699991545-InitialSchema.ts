@@ -464,7 +464,7 @@ export class InitialSchema1783699991545 implements MigrationInterface {
           {
             name: 'phone_number',
             type: 'varchar',
-            length: '20',
+            length: '100',
             isNullable: true,
           },
           {
@@ -523,7 +523,7 @@ export class InitialSchema1783699991545 implements MigrationInterface {
     await queryRunner.createUniqueConstraint(
       'users',
       new TableUnique({
-        name: 'UQ_users_business_email',
+        name: 'UQ_users_company_email',
         columnNames: ['business_id', 'company_email'],
       }),
     );

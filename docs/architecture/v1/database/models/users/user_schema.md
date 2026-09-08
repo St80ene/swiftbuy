@@ -320,7 +320,7 @@ An index should exist on the email field because email is commonly used during a
 If email uniqueness is scoped to a business:
 
 ```sql
-CREATE UNIQUE INDEX idx_users_business_email
+CREATE UNIQUE INDEX idx_users_company_email
 ON users(business_id, email);
 ```
 

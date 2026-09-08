@@ -29,7 +29,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       .leftJoinAndSelect('user.role', 'role')
       .select([
         'user.id',
-        'user.business_email',
+        'user.company_email',
         'user.role_id',
         'user.business_id',
         'user.store_id',
@@ -51,7 +51,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     return {
       id: user.id,
-      email: user.business_email,
+      email: user.company_email,
       roleId: user.role_id,
       businessId: user.business_id,
       storeId: user.store_id,
