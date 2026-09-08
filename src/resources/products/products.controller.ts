@@ -17,9 +17,15 @@ import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import { ProductPaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import {
+  PaginationMeta,
+  ProductPaginationQueryDto,
+} from '../../common/dto/pagination-query.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { ApiResponse } from '../../common/utils/response.utils';
+import { AuditLog } from '../audit_logs/entities/audit_log.entity';
+import { Product } from './entities/product.entity';
 
 @Controller('products')
 export class ProductsController {
@@ -40,7 +46,7 @@ export class ProductsController {
         }),
     )
     files?: Express.Multer.File[],
-  ) {
+  ): Promise<ApiResponse<Product>> {
     return this.productsService.create(createProductDto, currentUser, files);
   }
 
@@ -48,7 +54,7 @@ export class ProductsController {
   findAll(
     @Query() paginationQuery: ProductPaginationQueryDto,
     @CurrentUser() currentUser: AuthenticatedUser,
-  ) {
+  ): Promise<ApiResponse<{ products: Product[]; meta: PaginationMeta }>> {
     return this.productsService.findAll(paginationQuery, currentUser);
   }
 
@@ -56,7 +62,7 @@ export class ProductsController {
   findOne(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
-  ) {
+  ): Promise<ApiResponse<Product>> {
     return this.productsService.findOne(id, currentUser);
   }
 
@@ -65,7 +71,12 @@ export class ProductsController {
     @Param('id', ParseUUIDPipe) productId: string,
     @Query() query: ProductPaginationQueryDto,
     @CurrentUser() currentUser: AuthenticatedUser,
-  ) {
+  ): Promise<
+    ApiResponse<{
+      auditLogs: AuditLog[];
+      meta: PaginationMeta;
+    }>
+  > {
     return this.productsService.getProductAuditLogs(
       productId,
       currentUser,
@@ -85,7 +96,7 @@ export class ProductsController {
     @Body() updateProductDto: UpdateProductDto,
     @CurrentUser() currentUser: AuthenticatedUser,
     @UploadedFiles() files?: Express.Multer.File[],
-  ) {
+  ): Promise<ApiResponse<Product>> {
     return this.productsService.update(
       id,
       updateProductDto,
@@ -98,7 +109,7 @@ export class ProductsController {
   remove(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
-  ) {
+  ): Promise<ApiResponse<null>> {
     return this.productsService.remove(id, currentUser);
   }
 }

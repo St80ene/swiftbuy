@@ -52,6 +52,31 @@ export class ProductsService {
     private readonly auditLogService: AuditLogsService,
   ) {}
 
+  /**
+   * Creates a new product for the authenticated user's business.
+   *
+   * The operation is executed within a database transaction. If product images
+   * are supplied, they are uploaded to Cloudinary before the product is saved.
+   *
+   * The reorder level is converted from the product's display unit into the
+   * configured base unit before being persisted. After the product is created,
+   * an initial stock mutation is created with a quantity of zero to establish
+   * the product's stock history.
+   *
+   * If the database operation fails, the transaction is rolled back and any
+   * successfully uploaded Cloudinary images are deleted to prevent orphaned
+   * assets.
+   *
+   * @param createProductDto - Product information supplied by the client.
+   * @param user - Authenticated user creating the product. The user's business
+   * is used as the product's owner.
+   * @param files - Optional product images uploaded with the request.
+   *
+   * @returns An API response containing the newly created product.
+   *
+   * @throws {InternalServerErrorException} If product creation, image upload,
+   * stock initialization, or transaction processing fails.
+   */
   async create(
     createProductDto: CreateProductDto,
     user: AuthenticatedUser,
@@ -126,6 +151,25 @@ export class ProductsService {
     }
   }
 
+  /**
+   * Retrieves a paginated collection of products belonging to the
+   * authenticated user's business.
+   *
+   * Supports searching by product name or description, filtering by product
+   * status, pagination, and sorting by supported product fields.
+   *
+   * Soft-deleted products and products belonging to other businesses are
+   * excluded from the result.
+   *
+   * @param paginationQuery - Pagination, search, filtering, and sorting
+   * options supplied by the client.
+   * @param user - Authenticated user whose business owns the products.
+   *
+   * @returns A paginated product collection with pagination metadata.
+   *
+   * @throws {InternalServerErrorException} If the product collection cannot
+   * be retrieved.
+   */
   async findAll(
     paginationQuery: ProductPaginationQueryDto,
     user: AuthenticatedUser,
@@ -196,6 +240,22 @@ export class ProductsService {
     }
   }
 
+  /**
+   * Retrieves a single product belonging to the authenticated user's
+   * business.
+   *
+   * The product's stock and category relationships are loaded with the
+   * product details. Soft-deleted products and products belonging to another
+   * business cannot be retrieved.
+   *
+   * @param id - UUID of the product to retrieve.
+   * @param user - Authenticated user whose business owns the product.
+   *
+   * @returns The requested product with its category and stock relationships.
+   *
+   * @throws {NotFoundException} If the product does not exist, has been
+   * soft-deleted, or does not belong to the user's business.
+   */
   async findOne(
     id: string,
     user: AuthenticatedUser,
@@ -214,6 +274,37 @@ export class ProductsService {
     return successResponse('Product retrieved successfully', product);
   }
 
+  /**
+   * Updates a product belonging to the authenticated user's business.
+   *
+   * The update is executed inside a database transaction and supports
+   * modifying product details, managing product images, updating the reorder
+   * level, and changing the product status.
+   *
+   * Product status changes are validated against the configured
+   * {@link allowedTransitions} map. A product cannot be transitioned to its
+   * current status or to a status that is not explicitly allowed.
+   *
+   * Product images can be removed from Cloudinary and new images can be
+   * uploaded as part of the same request.
+   *
+   * A complete before-and-after snapshot of the product is recorded in the
+   * audit log after a successful update.
+   *
+   * @param id - UUID of the product to update.
+   * @param updateProductDto - Product fields and update instructions supplied
+   * by the client.
+   * @param user - Authenticated user whose business owns the product.
+   * @param files - Optional new product images.
+   *
+   * @returns The updated product wrapped in the standard API response.
+   *
+   * @throws {NotFoundException} If the product does not exist or does not
+   * belong to the user's business.
+   * @throws {BadRequestException} If the requested status is the current
+   * status or the status transition is not permitted.
+   * @throws {InternalServerErrorException} If the update transaction fails.
+   */
   async update(
     id: string,
     updateProductDto: UpdateProductDto,
@@ -327,6 +418,24 @@ export class ProductsService {
     }
   }
 
+  /**
+   * Soft-deletes a product belonging to the authenticated user's business.
+   *
+   * Before the product is soft-deleted, all associated product images are
+   * removed from Cloudinary and the product's image references are cleared.
+   *
+   * The deletion is recorded in the audit log to preserve an audit trail
+   * of the operation.
+   *
+   * @param id - UUID of the product to remove.
+   * @param user - Authenticated user whose business owns the product.
+   *
+   * @returns A successful API response with a null data payload.
+   *
+   * @throws {NotFoundException} If the product does not exist or does not
+   * belong to the user's business.
+   * @throws {InternalServerErrorException} If the deletion operation fails.
+   */
   async remove(
     id: string,
     user: AuthenticatedUser,
@@ -375,6 +484,24 @@ export class ProductsService {
     }
   }
 
+  /**
+   * Calculates inventory-health metrics for the authenticated user's
+   * business.
+   *
+   * The metrics include the total number of products, total stock quantity,
+   * number of products at or below their reorder level, and inventory value.
+   *
+   * The resulting metrics are formatted as dashboard cards for consumption
+   * by the dashboard application.
+   *
+   * @param user - Authenticated user whose business inventory is being
+   * evaluated.
+   *
+   * @returns An array of dashboard cards containing inventory-health metrics.
+   *
+   * @throws {InternalServerErrorException} If the inventory metrics cannot
+   * be retrieved.
+   */
   async getInventoryHealth(user: AuthenticatedUser): Promise<DashboardCard[]> {
     const queryBuilder = this.productRepository
       .createQueryBuilder('product')
@@ -427,6 +554,24 @@ export class ProductsService {
     ];
   }
 
+  /**
+   * Retrieves the audit history for a specific product.
+   *
+   * The product is first verified to ensure it belongs to the authenticated
+   * user's business. Once verified, the method delegates retrieval of the
+   * product's audit records to the audit-log service.
+   *
+   * Audit logs are paginated according to the supplied query parameters.
+   *
+   * @param productId - UUID of the product whose audit history is requested.
+   * @param user - Authenticated user whose business owns the product.
+   * @param query - Pagination options for the audit-log collection.
+   *
+   * @returns A paginated collection of audit logs associated with the product.
+   *
+   * @throws {NotFoundException} If the product does not exist or does not
+   * belong to the user's business.
+   */
   async getProductAuditLogs(
     productId: string,
     user: AuthenticatedUser,
