@@ -22,8 +22,8 @@ export const NormalizeSearch = () =>
   });
 
 export const PRODUCT_SORT_FIELDS = {
-  createdAt: 'product.createdAt',
-  updatedAt: 'product.updatedAt',
+  created_at: 'product.created_at',
+  updated_at: 'product.updated_at',
   name: 'product.name',
   selling_price: 'product.selling_price',
   cost_price: 'product.cost_price',
@@ -33,8 +33,8 @@ export const PRODUCT_SORT_FIELDS = {
 export type ProductSortField = (typeof PRODUCT_SORT_FIELD_NAMES)[number];
 
 export const PRODUCT_SORT_FIELD_NAMES = [
-  'createdAt',
-  'updatedAt',
+  'created_at',
+  'updated_at',
   'name',
   'selling_price',
   'cost_price',
@@ -73,7 +73,7 @@ export class ProductPaginationQueryDto extends BasePaginationQueryDto {
 
   @IsOptional()
   @IsIn(Object.keys(PRODUCT_SORT_FIELDS))
-  sortBy?: ProductSortField = 'createdAt';
+  sortBy?: ProductSortField = 'created_at';
 
   @IsOptional()
   @IsIn(['ASC', 'DESC'])
@@ -101,18 +101,18 @@ export class PurchaseOrderPaginationQueryDto extends BasePaginationQueryDto {
 }
 
 export const AUDIT_LOG_SORT_FIELDS = {
-  createdAt: 'audit_log.createdAt',
-  updatedAt: 'audit_log.updatedAt',
+  created_at: 'audit_log.created_at',
+  updated_at: 'audit_log.updated_at',
 } as const;
 
-export const AUDIT_LOG_SORT_FIELD_NAMES = ['createdAt', 'updatedAt'] as const;
+export const AUDIT_LOG_SORT_FIELD_NAMES = ['created_at', 'updated_at'] as const;
 
 export type AuditLogSortField = (typeof AUDIT_LOG_SORT_FIELD_NAMES)[number];
 
 export class AuditLogPaginationQueryDto extends BasePaginationQueryDto {
   @IsOptional()
   @IsIn(Object.keys(AUDIT_LOG_SORT_FIELDS))
-  sortBy?: AuditLogSortField = 'createdAt';
+  sortBy?: AuditLogSortField = 'created_at';
 
   @IsOptional()
   @IsIn(['ASC', 'DESC'])

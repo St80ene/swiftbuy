@@ -143,7 +143,7 @@ export class Product extends BaseEntity {
     type: 'datetime',
     default: () => 'CURRENT_TIMESTAMP',
   })
-  createdAt!: Date;
+  created_at!: Date;
 
   @UpdateDateColumn({
     type: 'datetime',

@@ -21,33 +21,54 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
 
     await queryRunner.query(
       `
-      INSERT INTO businesses (
-        id,
-        legal_name,
-        display_name,
-        slug,
-        business_type,
-        email,
-        phone_number,
-        country,
-        currency,
-        timezone,
-        locale
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `,
+  INSERT INTO businesses (
+    id,
+    legal_name,
+    display_name,
+    slug,
+    registration_number,
+    tax_identification_number,
+    business_type,
+    email,
+    phone_number,
+    website,
+    address_line_1,
+    address_line_2,
+    city,
+    state,
+    country,
+    postal_code,
+    currency,
+    timezone,
+    locale,
+    settings
+  )
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `,
       [
         businessId,
-        'SwiftBuy Demo Business',
-        'SwiftBuy Demo',
-        'swiftbuy-demo',
+        'SwiftBuy Technologies Ltd',
+        'SwiftBuy Inventory',
+        'swiftbuy-inventory',
+        'RC-1234567',
+        'TIN-98765432',
         'RETAIL',
         'admin@swiftbuy.com',
-        '+2348000000000',
+        '+2348012345678',
+        'https://swiftbuy.ng',
+        'Plot 123, Ozumba Mbadiwe Avenue',
+        'Victoria Island',
+        'Lagos',
+        'Lagos',
         'NG',
+        '101241',
         'NGN',
         'Africa/Lagos',
         'en-NG',
+        JSON.stringify({
+          themeColor: '#06b6d4',
+          enableNotifications: true,
+        }),
       ],
     );
 

@@ -3,6 +3,7 @@ import { ProductsService } from '../products/products.service';
 import { PurchaseOrdersService } from '../purchase_orders/purchase_orders.service';
 import { StocksService } from '../stocks/stock.service';
 import { DashboardSection } from './interfaces/initial_interface';
+import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 
 @Injectable()
 export class DashboardService {
@@ -12,9 +13,13 @@ export class DashboardService {
     private readonly stocksService: StocksService,
   ) {}
 
-  async getDashboard() {
+  async getDashboard(user: AuthenticatedUser): Promise<{
+    inventory: DashboardSection;
+    procurement: DashboardSection;
+    warehouse: DashboardSection;
+  }> {
     const [inventory, procurement, warehouse] = await Promise.all([
-      this.getInventoryHealth(),
+      this.getInventoryHealth(user),
       this.getProcurementPipeline(),
       this.getWarehouseOperations(),
     ]);
@@ -26,10 +31,10 @@ export class DashboardService {
     };
   }
 
-  async getInventoryHealth(): Promise<DashboardSection> {
+  async getInventoryHealth(user: AuthenticatedUser): Promise<DashboardSection> {
     return {
       title: 'Inventory Health',
-      cards: await this.productsService.getInventoryHealth(),
+      cards: await this.productsService.getInventoryHealth(user),
     };
   }
 

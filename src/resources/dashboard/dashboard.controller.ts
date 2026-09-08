@@ -2,6 +2,8 @@ import { Controller, Get, Post } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
 import { UserRole } from '../../common/enum/user_role.enum';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 
 @Controller('dashboard')
 export class DashboardController {
@@ -9,8 +11,8 @@ export class DashboardController {
 
   @Post('inventory-health')
   @Roles(UserRole.ADMIN, UserRole.MANAGER)
-  getInventoryHealth() {
-    return this.dashboardService.getInventoryHealth();
+  getInventoryHealth(@CurrentUser() user: AuthenticatedUser) {
+    return this.dashboardService.getInventoryHealth(user);
   }
 
   @Get('procurement-pipeline')
