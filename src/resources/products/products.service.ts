@@ -10,7 +10,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { allowedTransitions, UpdateProductDto } from './dto/update-product.dto';
 import { Product } from './entities/product.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, IsNull } from 'typeorm';
 import {
   MutationReason,
   MutationType,
@@ -261,7 +261,7 @@ export class ProductsService {
     user: AuthenticatedUser,
   ): Promise<ApiResponse<Product>> {
     const product = await this.productRepository.findOne({
-      where: { id, business_id: user.businessId, deleted_at: undefined },
+      where: { id, business_id: user.businessId, deleted_at: IsNull() },
       relations: { stock: true, category: true },
     });
 
@@ -318,7 +318,7 @@ export class ProductsService {
 
     try {
       const product = await queryRunner.manager.findOne(Product, {
-        where: { id, business_id: user.businessId, deleted_at: undefined },
+        where: { id, business_id: user.businessId, deleted_at: IsNull() },
       });
 
       if (!product) {
@@ -442,7 +442,7 @@ export class ProductsService {
   ): Promise<ApiResponse<null>> {
     try {
       const product = await this.productRepository.findOne({
-        where: { id, business_id: user.businessId, deleted_at: undefined },
+        where: { id, business_id: user.businessId, deleted_at: IsNull() },
       });
 
       if (!product) {
