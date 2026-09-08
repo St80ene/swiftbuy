@@ -168,10 +168,12 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
      * For the bootstrap account, ADMIN receives all permissions.
      */
 
-    const adminRole = roles.find((role) => role.name === UserRole.ADMIN);
+    const super_adminRole = roles.find(
+      (role) => role.name === UserRole.SUPER_ADMIN,
+    );
 
-    if (!adminRole) {
-      throw new Error('ADMIN role was not created');
+    if (!super_adminRole) {
+      throw new Error('SUPER_ADMIN role was not created');
     }
 
     await queryRunner.manager
@@ -180,7 +182,7 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
       .into('role_permissions')
       .values(
         permissions.map((permission) => ({
-          role_id: adminRole.id,
+          role_id: super_adminRole.id,
           permission_id: permission.id,
         })),
       )
@@ -194,17 +196,16 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
 
     const userRepository = queryRunner.manager.getRepository(User);
 
-    const adminUser = userRepository.create({
+    const superAdminUser = userRepository.create({
       business_id: businessId,
       store_id: storeId,
-      first_name: 'SwiftBuy',
-      last_name: 'Admin',
-      business_email: 'admin@swiftbuy.com',
-      role_id: adminRole.id,
-      is_active: true,
+      first_name: 'Etiene',
+      last_name: 'Essenoh',
+      company_email: 'superadmin@swiftbuy.com',
+      role_id: super_adminRole.id,
     });
 
-    const savedAdmin = await userRepository.save(adminUser);
+    const savedAdmin = await userRepository.save(superAdminUser);
 
     /**
      * ============================================================
@@ -213,8 +214,9 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
      *
      * Development credentials:
      *
-     * Email:    admin@swiftbuy.com
+     * Email:    superadmin@swiftbuy.com
      * Password: Test@123!#
+     * A&<mF)!++=TY3>M7
      *
      * Change this before using this seed outside development.
      */
@@ -250,8 +252,8 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
      */
 
     const result: unknown = await queryRunner.query(
-      ` SELECT b.id FROM businesses b INNER JOIN users u ON u.business_id = b.id WHERE u.business_email = ? LIMIT 1 `,
-      ['admin@swiftbuy.com'],
+      ` SELECT b.id FROM businesses b INNER JOIN users u ON u.business_id = b.id WHERE u.company_email = ? LIMIT 1 `,
+      ['superadmin@swiftbuy.com'],
     );
 
     const businesses = result as BusinessIdRow[];

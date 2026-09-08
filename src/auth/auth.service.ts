@@ -51,9 +51,9 @@ export class AuthService {
     const { accessToken, refreshToken } = await this.generateTokens(user);
 
     await this.auditLogService.create({
-      action: AuditLogAction.LOGIN,
       entity: AuditLogEntity.USER,
       entityId: user.id,
+      action: AuditLogAction.LOGIN,
     });
 
     return {
@@ -89,7 +89,7 @@ export class AuthService {
   async forgotPassword({ email }: ForgotPasswordDto) {
     const user = await this.userRepository.findOne({
       where: {
-        business_email: email,
+        company_email: email,
       },
     });
 
@@ -281,7 +281,7 @@ export class AuthService {
         id: true,
         first_name: true,
         last_name: true,
-        business_email: true,
+        company_email: true,
         role_id: true,
         business_id: true,
         store_id: true,
@@ -302,7 +302,7 @@ export class AuthService {
   ): Promise<User> {
     const user = await this.userRepository.findOne({
       where: {
-        business_email: email,
+        company_email: email,
       },
       relations: {
         role: true,

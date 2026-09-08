@@ -83,7 +83,7 @@ export class BusinessesService {
        * Upload business logo before creating the database record.
        */
       if (file) {
-        const uploadedAsset = await this.cloudinaryService.uploadProductImage(
+        const uploadedAsset = await this.cloudinaryService.uploadImage(
           file,
           'branding',
         );
@@ -257,10 +257,7 @@ export class BusinessesService {
      * Upload the new logo first.
      */
     try {
-      const asset = await this.cloudinaryService.uploadProductImage(
-        file,
-        'branding',
-      );
+      const asset = await this.cloudinaryService.uploadImage(file, 'branding');
 
       uploadedAsset = {
         url: asset.url,

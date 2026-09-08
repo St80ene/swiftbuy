@@ -13,7 +13,7 @@ export interface CloudinaryImage {
 
 @Injectable()
 export class CloudinaryService {
-  async uploadProductImage(
+  async uploadImage(
     file: Express.Multer.File,
     folderName: string = 'products',
   ): Promise<CloudinaryImage> {

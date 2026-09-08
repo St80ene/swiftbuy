@@ -32,7 +32,12 @@ export class CreateUserDto {
   @IsEmail()
   @MaxLength(254)
   @Transform(({ value }: { value: string }) => value?.trim().toLowerCase())
-  email!: string;
+  company_email!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  phone_number?: string;
 
   @IsOptional()
   @IsBoolean()
