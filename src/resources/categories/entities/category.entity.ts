@@ -15,14 +15,14 @@ import { Product } from '../../products/entities/product.entity';
 
 export const CATEGORY_SORT_FIELDS = {
   name: 'category.name',
-  createdAt: 'category.created_at',
-  updatedAt: 'category.updated_at',
+  created_at: 'category.created_at',
+  updated_at: 'category.updated_at',
 } as const;
 
 export const CATEGORY_SORT_FIELD_NAMES = [
   'name',
-  'createdAt',
-  'updatedAt',
+  'created_at',
+  'updated_at',
 ] as const;
 
 export type CategorySortField = (typeof CATEGORY_SORT_FIELD_NAMES)[number];

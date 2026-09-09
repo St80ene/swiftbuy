@@ -60,7 +60,7 @@ export class ProductSourcesService {
     const findCondition: FindManyOptions = {
       skip: skip,
       take: limitNumber,
-      order: { createdAt: 'DESC' },
+      order: { created_at: 'DESC' },
     };
 
     const [productSources, total] =

@@ -83,7 +83,7 @@ export class CategoriesService {
       skip,
     } = getPaginationOptions(paginationQuery);
 
-    const { search, order = 'DESC', sortBy = 'createdAt' } = paginationQuery;
+    const { search, order = 'DESC', sortBy = 'created_at' } = paginationQuery;
 
     const sortColumn = CATEGORY_SORT_FIELDS[sortBy];
 

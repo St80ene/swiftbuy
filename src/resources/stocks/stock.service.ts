@@ -185,7 +185,7 @@ export class StocksService {
 
     const logs = await this.dataSource.getRepository(Stocks).find({
       where: whereCondition,
-      order: { createdAt: 'DESC' },
+      order: { created_at: 'DESC' },
     });
 
     return successResponse(

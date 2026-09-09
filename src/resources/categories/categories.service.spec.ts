@@ -7,7 +7,7 @@ import { Business } from '../business/entities/business.entity';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { CategoryPaginationQueryDto } from './dto/category_pagination_dto.dto';
-import { getPaginationOptions } from '../../utils/helpers/get_pagination_options.util';
+import { getPaginationOptions } from '../../common/utils/helpers/get_pagination_options.util';
 
 jest.mock('../../utils/helpers/get_pagination_options.util');
 
@@ -69,8 +69,8 @@ describe('CategoriesService', () => {
       name: 'Electronics',
       description: 'Electronic products',
       business: mockBusiness,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      created_at: new Date(),
+      updated_at: new Date(),
       ...overrides,
     }) as Category;
 
@@ -329,7 +329,7 @@ describe('CategoriesService', () => {
       limit: 10,
       search: undefined,
       order: 'DESC',
-      sortBy: 'createdAt',
+      sortBy: 'created_at',
     } as CategoryPaginationQueryDto;
 
     it('should retrieve categories successfully', async () => {
@@ -381,7 +381,7 @@ describe('CategoriesService', () => {
         limit: 10,
         search: 'electronics',
         order: 'DESC',
-        sortBy: 'createdAt',
+        sortBy: 'created_at',
       } as CategoryPaginationQueryDto;
 
       await service.findAll(businessId, query);
@@ -556,7 +556,7 @@ describe('CategoriesService', () => {
         page: 1,
         limit: 10,
         order: 'ASC',
-        sortBy: 'createdAt',
+        sortBy: 'created_at',
       } as CategoryPaginationQueryDto;
 
       await service.findAll(businessId, query);
@@ -574,7 +574,7 @@ describe('CategoriesService', () => {
         page: 1,
         limit: 10,
         order: 'INVALID',
-        sortBy: 'createdAt',
+        sortBy: 'created_at',
       } as unknown as CategoryPaginationQueryDto;
 
       await service.findAll(businessId, query);

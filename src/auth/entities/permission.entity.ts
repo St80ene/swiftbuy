@@ -25,12 +25,12 @@ export class Permission {
   rolePermissions!: RolePermissions[];
 
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
-  createdAt!: Date;
+  created_at!: Date;
 
   @Column({
     type: 'datetime',
     default: () => 'CURRENT_TIMESTAMP',
     onUpdate: 'CURRENT_TIMESTAMP',
   })
-  updatedAt!: Date;
+  updated_at!: Date;
 }

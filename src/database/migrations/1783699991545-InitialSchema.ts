@@ -395,6 +395,12 @@ export class InitialSchema1783699991545 implements MigrationInterface {
             type: 'datetime',
             default: 'CURRENT_TIMESTAMP',
           },
+          {
+            name: 'updated_at',
+            type: 'datetime',
+            default: 'CURRENT_TIMESTAMP',
+            onUpdate: 'CURRENT_TIMESTAMP',
+          },
         ],
       }),
       true,

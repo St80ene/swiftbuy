@@ -15,7 +15,7 @@ import { Type } from 'class-transformer';
 import { MaxObjectSize } from '../../../common/validators/max_object_size.validator';
 
 export enum AuditLogSortBy {
-  CREATED_AT = 'createdAt',
+  CREATED_AT = 'created_at',
   ACTION = 'action',
   ENTITY = 'entity',
 }

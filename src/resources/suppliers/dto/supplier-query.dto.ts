@@ -16,8 +16,8 @@ export class SupplierQueryDto {
   search?: string;
 
   @IsOptional()
-  @IsIn(['name', 'email', 'createdAt'])
-  sortBy: 'name' | 'email' | 'createdAt' = 'createdAt';
+  @IsIn(['name', 'email', 'created_at'])
+  sortBy: 'name' | 'email' | 'created_at' = 'created_at';
 
   @IsOptional()
   @IsIn(['ASC', 'DESC'])

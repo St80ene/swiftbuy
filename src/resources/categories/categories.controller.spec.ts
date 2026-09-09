@@ -230,7 +230,7 @@ describe('CategoriesController', () => {
       limit: 10,
       search: 'electronics',
       order: 'DESC',
-      sortBy: 'createdAt',
+      sortBy: 'created_at',
     } as BasePaginationQueryDto;
 
     it('should retrieve all categories for a business', async () => {

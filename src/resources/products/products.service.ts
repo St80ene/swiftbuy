@@ -393,7 +393,7 @@ export class ProductsService {
         metadata: {
           productName: updatedProduct.name,
           businessId: user.businessId,
-          updatedAt: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
           reason: `${updatedProduct.name} was updated by user`,
         },
       });

@@ -14,8 +14,10 @@ describe('SuppliersService', () => {
     id: 'supplier-id',
     name: 'ABC Supplier',
     email: 'abc@test.com',
-    createdAt: new Date(),
+    created_at: new Date(),
+    updated_at: new Date(),
     productSources: [],
+    purchaseOrders: [],
   };
 
   beforeEach(async () => {
