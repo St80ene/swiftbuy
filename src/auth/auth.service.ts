@@ -300,6 +300,7 @@ export class AuthService {
     email: string,
     password: string,
   ): Promise<User> {
+    console.log('Validating credentials ', { email, password });
     const user = await this.userRepository.findOne({
       where: {
         company_email: email,

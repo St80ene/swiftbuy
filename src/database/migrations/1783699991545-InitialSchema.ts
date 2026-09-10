@@ -1070,6 +1070,11 @@ export class InitialSchema1783699991545 implements MigrationInterface {
             length: '36',
           },
           {
+            name: 'business_id',
+            type: 'varchar',
+            length: '36',
+          },
+          {
             name: 'quantity',
             type: 'int',
             default: 0,

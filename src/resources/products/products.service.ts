@@ -262,7 +262,7 @@ export class ProductsService {
   ): Promise<ApiResponse<Product>> {
     const product = await this.productRepository.findOne({
       where: { id, business_id: user.businessId, deleted_at: IsNull() },
-      relations: { stock: true, category: true },
+      relations: { stocks: true, category: true },
     });
 
     if (!product) {

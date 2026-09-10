@@ -6,6 +6,7 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -114,8 +115,8 @@ export class Product extends BaseEntity {
   @OneToOne(() => ProductSource, (source) => source.product)
   source!: ProductSource;
 
-  @OneToOne(() => Stocks, (stock) => stock.product)
-  stock!: Stocks;
+  @OneToMany(() => Stocks, (stocks) => stocks.product)
+  stocks!: Stocks[];
 
   @Column({ type: 'char', length: 36, nullable: true })
   category_id?: string;
