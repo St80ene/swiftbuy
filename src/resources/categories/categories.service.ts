@@ -93,6 +93,8 @@ export class CategoriesService {
 
     const queryBuilder = this.categoryRepository
       .createQueryBuilder('category')
+      .leftJoinAndSelect('category.business', 'business')
+      .leftJoinAndSelect('category.products', 'products')
       .where('category.business_id = :businessId', {
         businessId,
       });
