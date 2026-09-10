@@ -22,6 +22,7 @@ import { getDatabaseConfig } from './database/config/getDatabaseConfig';
 import { CategoriesModule } from './resources/categories/categories.module';
 import { StoresModule } from './resources/stores/stores.module';
 import { CloudinaryModule } from './common/utils/helpers/cloudinary/cloudinary.module';
+import { StockMovementsModule } from './resources/stock_movements/stock_movements.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -57,6 +58,7 @@ import { CloudinaryModule } from './common/utils/helpers/cloudinary/cloudinary.m
     ReportsModule,
     CategoriesModule,
     StoresModule,
+    StockMovementsModule,
   ],
   controllers: [AppController],
   providers: [
