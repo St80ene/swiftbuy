@@ -21,7 +21,7 @@ export class DashboardService {
     const [inventory, procurement, warehouse] = await Promise.all([
       this.getInventoryHealth(user),
       this.getProcurementPipeline(),
-      this.getWarehouseOperations(),
+      this.getWarehouseOperations(user),
     ]);
 
     return {
@@ -45,10 +45,12 @@ export class DashboardService {
     };
   }
 
-  async getWarehouseOperations(): Promise<DashboardSection> {
+  async getWarehouseOperations(
+    user: AuthenticatedUser,
+  ): Promise<DashboardSection> {
     return {
       title: 'Warehouse Operations',
-      cards: await this.stocksService.getWarehouseMetrics(),
+      cards: await this.stocksService.getWarehouseMetrics(user),
     };
   }
 }

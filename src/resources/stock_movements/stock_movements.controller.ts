@@ -1,34 +1,86 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+
 import { StockMovementsService } from './stock_movements.service';
+
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { CreateStockMovementDto } from './dto/create-stock_movement.dto';
-import { UpdateStockMovementDto } from './dto/update-stock_movement.dto';
 
 @Controller('stock-movements')
 export class StockMovementsController {
   constructor(private readonly stockMovementsService: StockMovementsService) {}
 
-  @Post()
-  create(@Body() createStockMovementDto: CreateStockMovementDto) {
-    return this.stockMovementsService.create(createStockMovementDto);
-  }
-
+  /**
+   * Get all stock movements for the authenticated business.
+   *
+   * GET /stock-movements
+   */
   @Get()
-  findAll() {
-    return this.stockMovementsService.findAll();
+  findAll(@CurrentUser() user: AuthenticatedUser) {
+    return this.stockMovementsService.findAll(user);
   }
 
+  /**
+   * Get one stock movement.
+   *
+   * GET /stock-movements/:id
+   */
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.stockMovementsService.findOne(+id);
+  findOne(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.stockMovementsService.findOne(id, user);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateStockMovementDto: UpdateStockMovementDto) {
-    return this.stockMovementsService.update(+id, updateStockMovementDto);
+  /**
+   * Get all movements belonging to a stock balance.
+   *
+   * GET /stock-movements/stock/:stockId
+   */
+  @Get('stock/:stockId')
+  findByStock(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('stockId') stockId: string,
+  ) {
+    return this.stockMovementsService.findByStock(stockId, user);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.stockMovementsService.remove(+id);
+  /**
+   * Get all movements for a product.
+   *
+   * GET /stock-movements/product/:productId
+   */
+  @Get('product/:productId')
+  findByProduct(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('productId') productId: string,
+  ) {
+    return this.stockMovementsService.findByProduct(productId, user);
+  }
+
+  /**
+   * Create a stock movement and update the current stock balance.
+   *
+   * POST /stock-movements/movement
+   *
+   * The service performs both operations in one database transaction.
+   */
+  @Post('movement')
+  createMovement(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateStockMovementDto,
+  ) {
+    return this.stockMovementsService.createMovement(user, dto);
+  }
+
+  /**
+   * Create multiple stock movements atomically.
+   *
+   * POST /stock-movements/movement/bulk
+   */
+  @Post('movement/bulk')
+  bulkCreateMovements(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dtos: CreateStockMovementDto[],
+  ) {
+    return this.stockMovementsService.bulkCreateMovements(user, dtos);
   }
 }

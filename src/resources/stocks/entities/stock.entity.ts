@@ -1,5 +1,3 @@
-import { Type } from 'class-transformer';
-import { IsUUID, IsNotEmpty, IsEnum, Min, IsNumber } from 'class-validator';
 import {
   BaseEntity,
   Column,
@@ -7,94 +5,100 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
+  Unique,
   UpdateDateColumn,
 } from 'typeorm';
+
 import { Product } from '../../products/entities/product.entity';
 import { Business } from '../../business/entities/business.entity';
 import { Store } from '../../stores/entities/store.entity';
-
-// Core Ledger Flow Enums
-export enum MutationType {
-  INFLOW = 'INFLOW',
-  OUTFLOW = 'OUTFLOW',
-}
-
-export enum MutationReason {
-  SUPPLIER_RESTOCK = 'SUPPLIER_RESTOCK',
-  CUSTOMER_SALE = 'CUSTOMER_SALE',
-  STOLEN = 'STOLEN',
-  DAMAGED = 'DAMAGED',
-  EXPIRED = 'EXPIRED',
-  AUDIT_CORRECTION = 'AUDIT_CORRECTION',
-  NEW_PRODUCT_INITIALIZATION = 'NEW_PRODUCT_INITIALIZATION',
-}
+import {
+  StockMovement,
+  StockMovementDirection,
+  StockMovementReferenceType,
+  StockMovementType,
+} from '../../stock_movements/entities/stock_movement.entity';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 
 @Entity('stocks')
-export class Stocks extends BaseEntity {
-  constructor(props?: Partial<Stocks>) {
-    super();
-
-    if (props) {
-      Object.assign(this, props);
-    }
-  }
-
+@Unique('UQ_stock_product_store', ['product_id', 'store_id'])
+export class Stock extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
+  /**
+   * The product this stock balance belongs to.
+   */
   @Column({ type: 'varchar', length: 36 })
   product_id!: string;
 
+  /**
+   * Business tenant boundary.
+   */
   @Column({ type: 'varchar', length: 36 })
   business_id!: string;
 
+  /**
+   * Store where this stock is physically held.
+   */
   @Column({ type: 'varchar', length: 36 })
   store_id!: string;
 
-  @Column({
-    type: 'varchar',
-    default: MutationType.INFLOW,
-  })
-  type!: MutationType;
-
-  @Column({
-    type: 'varchar',
-    default: MutationReason.SUPPLIER_RESTOCK,
-  })
-  reason!: MutationReason;
-
-  @Column({ type: 'int' })
+  /**
+   * Current stock balance in the product's base UOM.
+   *
+   * Examples:
+   * - pcs → 25
+   * - g   → 5000
+   * - ml  → 2500
+   */
+  @Column({ type: 'int', default: 0 })
   quantity!: number;
 
-  @Column('decimal', { precision: 10, scale: 2 })
-  unit_cost_price!: number;
-
-  @Column('decimal', {
-    name: 'unit_selling_price',
-    precision: 10,
-    scale: 2,
-    default: 0.0,
-  })
-  unit_selling_price!: number;
+  /**
+   * Quantity at or below which the product is considered low stock
+   * for this particular store.
+   */
+  @Column({ type: 'int', default: 5 })
+  reorder_level!: number;
 
   @ManyToOne(() => Product, (product) => product.stocks, {
-    onDelete: 'CASCADE',
+    nullable: false,
+    onDelete: 'RESTRICT',
+    onUpdate: 'CASCADE',
   })
   @JoinColumn({ name: 'product_id' })
   product!: Product;
 
   @ManyToOne(() => Business, (business) => business.stocks, {
-    onDelete: 'CASCADE',
+    nullable: false,
+    onDelete: 'RESTRICT',
+    onUpdate: 'CASCADE',
   })
   @JoinColumn({ name: 'business_id' })
   business!: Business;
 
   @ManyToOne(() => Store, (store) => store.stocks, {
-    onDelete: 'CASCADE',
+    nullable: false,
+    onDelete: 'RESTRICT',
+    onUpdate: 'CASCADE',
   })
   @JoinColumn({ name: 'store_id' })
   store!: Store;
+
+  @OneToMany(() => StockMovement, (movement) => movement.stock)
+  movements!: StockMovement[];
 
   @CreateDateColumn({
     type: 'datetime',
@@ -115,32 +119,26 @@ export class AdjustStockDto {
   @IsNotEmpty()
   product_id!: string;
 
-  @IsEnum(MutationType)
-  @IsNotEmpty()
-  type!: MutationType; // INFLOW or OUTFLOW
+  @IsEnum(StockMovementType)
+  type!: StockMovementType;
 
-  @IsEnum(MutationReason)
-  @IsNotEmpty()
-  reason!: MutationReason; // e.g., STOLEN, DAMAGED, AUDIT_CORRECTION
+  @IsEnum(StockMovementDirection)
+  direction!: StockMovementDirection;
 
   @IsNumber()
-  @Min(1, { message: 'Quantity level must be at least 1.' })
-  @Type(() => Number)
   @Min(1)
-  quantity!: number; // The amount being changed
+  @Type(() => Number)
+  quantity!: number;
 
-  @CreateDateColumn({
-    name: 'created_at',
-    type: 'datetime',
-    default: () => 'CURRENT_TIMESTAMP',
-  })
-  created_at!: Date;
+  @IsOptional()
+  @IsString()
+  reason?: string;
 
-  @UpdateDateColumn({
-    name: 'updated_at',
-    type: 'datetime',
-    default: () => 'CURRENT_TIMESTAMP',
-    onUpdate: 'CURRENT_TIMESTAMP',
-  })
-  updated_at!: Date;
+  @IsOptional()
+  @IsEnum(StockMovementReferenceType)
+  reference_type?: StockMovementReferenceType;
+
+  @IsOptional()
+  @IsUUID()
+  reference_id?: string;
 }

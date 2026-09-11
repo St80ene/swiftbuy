@@ -1,17 +1,20 @@
 import {
+  IsEnum,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   Min,
-  IsEnum,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+
 import {
-  UomType,
   UomBaseName,
   UomDisplayName,
+  UomType,
 } from '../entities/product.entity';
+
 import { IsValidUom } from '../../../common/validators/uom.validator';
 
 export class CreateProductDto {
@@ -23,30 +26,34 @@ export class CreateProductDto {
   @IsOptional()
   description?: string;
 
-  @IsString()
+  @IsUUID()
   @IsOptional()
   category_id?: string;
 
-  @IsString()
-  @IsOptional()
-  business_id?: string;
-
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0.01, { message: 'Selling price must be greater than 0.' })
-  @Type(() => Number) // Form-data passes everything as strings; this safely forces it to a number
+  @IsNumber(
+    { maxDecimalPlaces: 2 },
+    {
+      message: 'Selling price must be a valid number with at most 2 decimals.',
+    },
+  )
+  @Min(0.01, {
+    message: 'Selling price must be greater than 0.',
+  })
+  @Type(() => Number)
   selling_price!: number;
 
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0.0, { message: 'Cost price cannot be negative.' })
-  @Type(() => Number) // cost_price to match the schema for profit margins
+  @IsNumber(
+    { maxDecimalPlaces: 2 },
+    {
+      message: 'Cost price must be a valid number with at most 2 decimals.',
+    },
+  )
+  @Min(0, {
+    message: 'Cost price cannot be negative.',
+  })
+  @Type(() => Number)
   cost_price!: number;
 
-  @IsNumber()
-  @Min(5, { message: 'Reorder level must be at least 5.' })
-  @Type(() => Number)
-  reorder_level!: number;
-
-  // Unit of Measure (UOM) fields
   @IsEnum(UomType, {
     message: 'uom_type must be one of: UNIT, WEIGHT, VOLUME.',
   })
@@ -58,7 +65,7 @@ export class CreateProductDto {
   uom_base_name!: UomBaseName;
 
   @IsEnum(UomDisplayName, {
-    message: 'uom_display_name must be one of: pcs, kg, L.',
+    message: 'uom_display_name must be one of: pcs, kg, L, ml.',
   })
   @IsValidUom({
     message:

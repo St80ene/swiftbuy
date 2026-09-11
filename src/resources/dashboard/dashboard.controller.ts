@@ -21,7 +21,7 @@ export class DashboardController {
   }
 
   @Get('warehouse-operations')
-  getWarehouseOperations() {
-    return this.dashboardService.getWarehouseOperations();
+  getWarehouseOperations(@CurrentUser() user: AuthenticatedUser) {
+    return this.dashboardService.getWarehouseOperations(user);
   }
 }
