@@ -9,5 +9,6 @@ import { CloudinaryService } from '../../common/utils/helpers/cloudinary/cloudin
   imports: [TypeOrmModule.forFeature([Business])],
   controllers: [BusinessController],
   providers: [BusinessesService, CloudinaryService],
+  exports: [BusinessesService],
 })
 export class BusinessesModule {}

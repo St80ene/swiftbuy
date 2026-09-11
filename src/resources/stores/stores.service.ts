@@ -1,12 +1,12 @@
 import {
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { Business } from '../business/entities/business.entity';
 import { Store } from './entities/store.entity';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
@@ -21,6 +21,7 @@ import {
   ApiResponse,
   successResponse,
 } from '../../common/utils/response.utils';
+import { BusinessesService } from '../business/business.service';
 
 @Injectable()
 export class StoresService {
@@ -28,8 +29,8 @@ export class StoresService {
     @InjectRepository(Store)
     private readonly storeRepository: Repository<Store>,
 
-    @InjectRepository(Business)
-    private readonly businessRepository: Repository<Business>,
+    @Inject(BusinessesService)
+    private readonly businessesService: BusinessesService,
   ) {}
 
   async create(
@@ -40,11 +41,7 @@ export class StoresService {
       createStoreDto;
 
     // Verify that the business exists
-    const business = await this.businessRepository.findOne({
-      where: {
-        id: businessId,
-      },
-    });
+    const { data: business } = await this.businessesService.findOne(businessId);
 
     if (!business) {
       throw new NotFoundException('Business not found');
