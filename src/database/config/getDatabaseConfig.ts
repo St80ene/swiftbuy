@@ -3,16 +3,16 @@ import { ConfigService } from '@nestjs/config';
 
 type SupportedDatabase = 'better-sqlite3' | 'mysql' | 'postgres';
 
-const toBoolean = (value: string | undefined, defaultValue = false): boolean => {
+const toBoolean = (
+  value: string | undefined,
+  defaultValue = false,
+): boolean => {
   if (value === undefined) return defaultValue;
 
   return ['true', '1', 'yes', 'on'].includes(value.toLowerCase());
 };
 
-const toNumber = (
-  value: string | undefined,
-  defaultValue: number,
-): number => {
+const toNumber = (value: string | undefined, defaultValue: number): number => {
   const parsed = Number(value);
 
   return Number.isFinite(parsed) ? parsed : defaultValue;
@@ -28,45 +28,34 @@ export const getDatabaseConfig = (
     'better-sqlite3',
   );
 
+  const isDevelopment = nodeEnv === 'development';
+  const isProduction = nodeEnv === 'production';
+
   const useInMemoryDb = toBoolean(
     configService.get<string>('USE_IN_MEMORY_DB'),
   );
 
-  const isDevelopment = nodeEnv === 'development';
-  const isTest = nodeEnv === 'test';
-  const isProduction = nodeEnv === 'production';
-
-  const isInMemorySqlite =
-    dbType === 'better-sqlite3' &&
-    useInMemoryDb &&
-    !isProduction;
-
-  const baseOrmConfig: TypeOrmModuleOptions = {
+  /**
+   * Shared TypeORM options.
+   *
+   * Keep this object untyped so it doesn't force the
+   * entire TypeOrmModuleOptions union into the driver branches.
+   */
+  const baseOrmConfig = {
     autoLoadEntities: true,
     logging: isDevelopment,
   };
 
   /**
-   * Development / Test SQLite
-   *
-   * Intended for:
-   * - local development
-   * - automated tests
-   *
-   * USE_IN_MEMORY_DB=true
-   * DB_TYPE=better-sqlite3
+   * SQLite
    */
-  if (isInMemorySqlite) {
+  if (dbType === 'better-sqlite3' && useInMemoryDb && !isProduction) {
     return {
       ...baseOrmConfig,
 
       type: 'better-sqlite3',
       database: ':memory:',
 
-      /**
-       * Rebuild the database every time the application starts.
-       * Appropriate because this database exists only in memory.
-       */
       dropSchema: true,
       synchronize: true,
 
@@ -75,7 +64,7 @@ export const getDatabaseConfig = (
   }
 
   /**
-   * Prevent accidental SQLite usage in production.
+   * Never allow SQLite in production.
    */
   if (isProduction && dbType === 'better-sqlite3') {
     throw new Error(
@@ -83,13 +72,11 @@ export const getDatabaseConfig = (
     );
   }
 
-  /**
-   * Network database configuration
-   */
   const host = configService.get<string>('DB_HOST');
   const username = configService.get<string>('DB_USERNAME');
-  const password = configService.get<string>('DB_PASSWORD');
   const database = configService.get<string>('DB_NAME');
+
+  const password = configService.get<string>('DB_PASSWORD', '');
 
   if (!host || !username || !database) {
     throw new Error(
@@ -107,25 +94,28 @@ export const getDatabaseConfig = (
     isProduction,
   );
 
+  const connectionLimit = toNumber(
+    configService.get<string>('DB_CONN_LIMIT'),
+    10,
+  );
+
+  const idleTimeout = toNumber(
+    configService.get<string>('DB_IDLE_TIMEOUT'),
+    60000,
+  );
+
   /**
    * MySQL
    */
   if (dbType === 'mysql') {
-    return {
+    const mysqlConfig: TypeOrmModuleOptions = {
       ...baseOrmConfig,
-
       type: 'mysql',
-
       host,
       port,
       username,
       password,
       database,
-
-      /**
-       * Never let TypeORM modify production schema automatically.
-       * Database changes should go through migrations.
-       */
       synchronize: false,
 
       ssl: sslEnabled
@@ -135,31 +125,27 @@ export const getDatabaseConfig = (
         : false,
 
       extra: {
-        connectionLimit: toNumber(
-          configService.get<string>('DB_CONN_LIMIT'),
-          10,
-        ),
+        connectionLimit,
         waitForConnections: true,
         queueLimit: 0,
       },
     };
+
+    return mysqlConfig;
   }
 
   /**
    * PostgreSQL
    */
   if (dbType === 'postgres') {
-    return {
+    const postgresConfig: TypeOrmModuleOptions = {
       ...baseOrmConfig,
-
       type: 'postgres',
-
       host,
       port,
       username,
       password,
       database,
-
       synchronize: false,
 
       ssl: sslEnabled
@@ -169,19 +155,15 @@ export const getDatabaseConfig = (
         : false,
 
       extra: {
-        max: toNumber(
-          configService.get<string>('DB_CONN_LIMIT'),
-          10,
-        ),
-        idleTimeoutMillis: toNumber(
-          configService.get<string>('DB_IDLE_TIMEOUT'),
-          60000,
-        ),
+        max: connectionLimit,
+        idleTimeoutMillis: idleTimeout,
       },
     };
+
+    return postgresConfig;
   }
 
   throw new Error(
-    `Unsupported DB_TYPE "${dbType}". Supported values are: better-sqlite3, mysql, postgres.`,
+    `Unsupported DB_TYPE "${dbType}". Supported values: better-sqlite3, mysql, postgres.`,
   );
 };
