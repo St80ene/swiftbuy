@@ -154,3 +154,27 @@ export class StorePaginationQueryDto extends BasePaginationQueryDto {
 
   [key: string]: unknown;
 }
+
+export const STOCK_SORT_FIELDS: Record<string, string> = {
+  created_at: 'stock.created_at',
+  updated_at: 'stock.updated_at',
+  quantity: 'stock.quantity',
+  type: 'stock.type',
+  reason: 'stock.reason',
+  unit_cost_price: 'stock.unit_cost_price',
+  unit_selling_price: 'stock.unit_selling_price',
+} as const;
+
+export const STOCK_SORT_FIELD_NAMES = Object.keys(STOCK_SORT_FIELDS);
+export type StockSortField = (typeof STOCK_SORT_FIELD_NAMES)[number];
+export class StockPaginationQueryDto extends BasePaginationQueryDto {
+  @IsOptional()
+  @IsIn(Object.keys(STOCK_SORT_FIELDS))
+  sortBy?: StockSortField = 'created_at';
+
+  @IsOptional()
+  @IsIn(['ASC', 'DESC'])
+  order?: 'ASC' | 'DESC' = 'DESC';
+
+  [key: string]: unknown;
+}

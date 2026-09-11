@@ -4,29 +4,52 @@ import {
   BadRequestException,
   InternalServerErrorException,
 } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository } from 'typeorm';
+
 import { Product } from '../products/entities/product.entity';
 import { AdjustStockDto, MutationType, Stocks } from './entities/stock.entity';
-import { DataSource, FindOptionsWhere, Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
+
 import { DashboardCard } from '../dashboard/interfaces/initial_interface';
+
 import {
   ApiResponse,
   successResponse,
 } from '../../common/utils/response.utils';
+import {
+  PaginationMeta,
+  STOCK_SORT_FIELDS,
+  StockPaginationQueryDto,
+} from '../../common/dto/pagination-query.dto';
+import { getPaginationOptions } from '../../common/utils/helpers/get_pagination_options.util';
 
 @Injectable()
 export class StocksService {
   constructor(
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
+
+    @InjectRepository(Stocks)
+    private readonly stockRepository: Repository<Stocks>,
+
     private readonly dataSource: DataSource,
   ) {}
 
   /**
-   * ─── ADJUST STOCK VIA ATOMIC LEDGER TRANSACTION ───
+   * ─────────────────────────────────────────────
+   * ADJUST SINGLE STOCK
+   * ─────────────────────────────────────────────
    */
-  async adjustStock(dto: AdjustStockDto): Promise<ApiResponse<Product>> {
-    // extend this service method to handle array of products
+  /**
+   * ─────────────────────────────────────────────
+   * ADJUST SINGLE STOCK
+   * ─────────────────────────────────────────────
+   */
+  async adjustStock(
+    businessId: string,
+    storeId: string,
+    dto: AdjustStockDto,
+  ): Promise<ApiResponse<Product>> {
     if (dto.quantity <= 0) {
       throw new BadRequestException(
         'Mutation quantity must be greater than zero.',
@@ -34,62 +57,70 @@ export class StocksService {
     }
 
     const queryRunner = this.dataSource.createQueryRunner();
+
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
       const product = await queryRunner.manager.findOne(Product, {
-        where: { id: dto.product_id },
+        where: {
+          id: dto.product_id,
+          business_id: businessId,
+        },
       });
 
       if (!product) {
         throw new NotFoundException('Product not found.');
       }
 
-      // Calculate parameters safely
       const mutationQuantity = Number(dto.quantity);
+
       if (
         dto.type === MutationType.OUTFLOW &&
         product.stock_quantity < mutationQuantity
       ) {
         throw new BadRequestException(
-          `Insolvent inventory allocation. Available: ${product.stock_quantity}`,
+          `Insufficient inventory. Available: ${product.stock_quantity}`,
         );
       }
 
-      // Update product current balance
       if (dto.type === MutationType.INFLOW) {
         product.stock_quantity += mutationQuantity;
       } else {
         product.stock_quantity -= mutationQuantity;
       }
+
       const updatedProduct = await queryRunner.manager.save(Product, product);
 
-      // Record tracking ledger log
       const mutation = queryRunner.manager.create(Stocks, {
-        // 4. FIXED: Using correct Stock entity
         product_id: product.id,
+        business_id: businessId,
+        store_id: storeId,
         type: dto.type,
         reason: dto.reason,
         quantity: mutationQuantity,
         unit_cost_price: product.cost_price,
-        unit_selling_price: product.selling_price, // 5. FIXED: price -> selling_price
+        unit_selling_price: product.selling_price,
       });
+
       await queryRunner.manager.save(Stocks, mutation);
 
       await queryRunner.commitTransaction();
+
       return successResponse(
         'Inventory stock ledger updated successfully',
         updatedProduct,
       );
     } catch (error) {
       await queryRunner.rollbackTransaction();
+
       if (
         error instanceof BadRequestException ||
         error instanceof NotFoundException
       ) {
         throw error;
       }
+
       throw new InternalServerErrorException(
         'Transaction failed while processing stock change.',
       );
@@ -98,10 +129,18 @@ export class StocksService {
     }
   }
 
+  /**
+   * ─────────────────────────────────────────────
+   * BULK ADJUST STOCK
+   * ─────────────────────────────────────────────
+   */
   async bulkAdjustStock(
+    businessId: string,
+    storeId: string,
     dtoArray: AdjustStockDto[],
   ): Promise<ApiResponse<Product[]>> {
     const queryRunner = this.dataSource.createQueryRunner();
+
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
@@ -116,36 +155,41 @@ export class StocksService {
         }
 
         const product = await queryRunner.manager.findOne(Product, {
-          where: { id: dto.product_id },
+          where: {
+            id: dto.product_id,
+            business_id: businessId,
+          },
         });
 
         if (!product) {
-          throw new NotFoundException(`Product not found.`);
+          throw new NotFoundException(`Product ${dto.product_id} not found.`);
         }
 
         const mutationQuantity = Number(dto.quantity);
+
         if (
-          product.stock_quantity > 0 &&
           dto.type === MutationType.OUTFLOW &&
           product.stock_quantity < mutationQuantity
         ) {
           throw new BadRequestException(
-            `Available stock balance: ${product.stock_quantity}`,
+            `Insufficient stock for product ${product.id}. Available: ${product.stock_quantity}`,
           );
         }
 
-        // Update product current balance
         if (dto.type === MutationType.INFLOW) {
           product.stock_quantity += mutationQuantity;
         } else {
           product.stock_quantity -= mutationQuantity;
         }
+
         const updatedProduct = await queryRunner.manager.save(Product, product);
+
         updatedProducts.push(updatedProduct);
 
-        // Record tracking ledger log
         const mutation = queryRunner.manager.create(Stocks, {
           product_id: product.id,
+          business_id: businessId,
+          store_id: storeId,
           type: dto.type,
           reason: dto.reason,
           quantity: mutationQuantity,
@@ -157,18 +201,21 @@ export class StocksService {
       }
 
       await queryRunner.commitTransaction();
+
       return successResponse(
         'Inventory stock ledger updated successfully for multiple products',
         updatedProducts,
       );
     } catch (error) {
       await queryRunner.rollbackTransaction();
+
       if (
         error instanceof BadRequestException ||
         error instanceof NotFoundException
       ) {
         throw error;
       }
+
       throw new InternalServerErrorException(
         'Transaction failed while processing stock changes for multiple products.',
       );
@@ -178,34 +225,233 @@ export class StocksService {
   }
 
   /**
-   * ─── COMPILE HISTORY LEDGER TIMELINE ───
+   * ─────────────────────────────────────────────
+   * GET ALL STOCK RECORDS
+   * ─────────────────────────────────────────────
    */
-  async getLedgerLogs(req?: AdjustStockDto): Promise<ApiResponse<Stocks[]>> {
-    const whereCondition: FindOptionsWhere<Stocks> = { ...req };
+  async findAll(
+    businessId: string,
+    paginationQuery: StockPaginationQueryDto,
+  ): Promise<
+    ApiResponse<{
+      stocks: Stocks[];
+      meta: PaginationMeta;
+    }>
+  > {
+    const {
+      page: pageNumber,
+      limit: limitNumber,
+      skip,
+    } = getPaginationOptions(paginationQuery);
 
-    const logs = await this.dataSource.getRepository(Stocks).find({
-      where: whereCondition,
-      order: { created_at: 'DESC' },
+    const {
+      search,
+      order = 'DESC',
+      sortBy = 'created_at',
+      type,
+      product_id,
+      store_id,
+    } = paginationQuery;
+
+    const sortColumn =
+      STOCK_SORT_FIELDS[sortBy] ?? STOCK_SORT_FIELDS.created_at;
+
+    const sortOrder: 'ASC' | 'DESC' =
+      order?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+    const queryBuilder = this.stockRepository
+      .createQueryBuilder('stock')
+      .leftJoinAndSelect('stock.product', 'product')
+      .leftJoinAndSelect('stock.store', 'store')
+      .leftJoinAndSelect('stock.business', 'business')
+      .where('stock.business_id = :businessId', {
+        businessId,
+      });
+
+    /**
+     * Search
+     *
+     * Search by product name, SKU or stock reason/type.
+     */
+    if (search) {
+      queryBuilder.andWhere(
+        `
+        (
+          LOWER(product.name) LIKE LOWER(:search)
+          OR LOWER(product.sku) LIKE LOWER(:search)
+          OR LOWER(stock.reason) LIKE LOWER(:search)
+          OR LOWER(stock.type) LIKE LOWER(:search)
+        )
+        `,
+        {
+          search: `%${search}%`,
+        },
+      );
+    }
+
+    /**
+     * Filter by mutation type
+     */
+    if (type) {
+      queryBuilder.andWhere('stock.type = :type', {
+        type,
+      });
+    }
+
+    /**
+     * Filter by product
+     */
+    if (product_id) {
+      queryBuilder.andWhere('stock.product_id = :product_id', {
+        product_id,
+      });
+    }
+
+    /**
+     * Filter by store
+     */
+    if (store_id) {
+      queryBuilder.andWhere('stock.store_id = :store_id', {
+        store_id,
+      });
+    }
+
+    queryBuilder.orderBy(sortColumn, sortOrder).skip(skip).take(limitNumber);
+
+    const [stocks, totalItems] = await queryBuilder.getManyAndCount();
+
+    const totalPages = Math.ceil(totalItems / limitNumber);
+
+    return successResponse('Stocks retrieved successfully', {
+      stocks,
+      meta: {
+        totalItems,
+        itemCount: stocks.length,
+        itemsPerPage: limitNumber,
+        totalPages,
+        currentPage: pageNumber,
+        hasNextPage: pageNumber < totalPages,
+        hasPreviousPage: pageNumber > 1,
+      },
     });
+  }
+
+  /**
+   * ─────────────────────────────────────────────
+   * GET SINGLE STOCK RECORD
+   * ─────────────────────────────────────────────
+   */
+  async findOne(id: string, businessId: string): Promise<ApiResponse<Stocks>> {
+    const stock = await this.stockRepository
+      .createQueryBuilder('stock')
+      .leftJoinAndSelect('stock.product', 'product')
+      .leftJoinAndSelect('stock.store', 'store')
+      .leftJoinAndSelect('stock.business', 'business')
+      .where('stock.id = :id', {
+        id,
+      })
+      .andWhere('stock.business_id = :businessId', {
+        businessId,
+      })
+      .getOne();
+
+    if (!stock) {
+      throw new NotFoundException('Stock record not found');
+    }
+
+    return successResponse('Stock record retrieved successfully', stock);
+  }
+
+  /**
+   * ─────────────────────────────────────────────
+   * GET STOCK HISTORY FOR A PRODUCT
+   * ─────────────────────────────────────────────
+   */
+  async findProductStockHistory(
+    productId: string,
+    businessId: string,
+  ): Promise<ApiResponse<Stocks[]>> {
+    const stocks = await this.stockRepository
+      .createQueryBuilder('stock')
+      .leftJoinAndSelect('stock.product', 'product')
+      .leftJoinAndSelect('stock.store', 'store')
+      .where('stock.product_id = :productId', {
+        productId,
+      })
+      .andWhere('stock.business_id = :businessId', {
+        businessId,
+      })
+      .orderBy('stock.created_at', 'DESC')
+      .getMany();
 
     return successResponse(
-      'Inventory historical timeline tracking logs compiled',
-      logs,
+      'Product stock history retrieved successfully',
+      stocks,
     );
   }
 
-  async getWarehouseMetrics(): Promise<DashboardCard[]> {
-    const result: Record<string, any> | undefined = await this.productRepository
+  /**
+   * ─────────────────────────────────────────────
+   * GET CURRENT STOCK FOR A PRODUCT
+   * ─────────────────────────────────────────────
+   */
+  async findCurrentStock(
+    productId: string,
+    businessId: string,
+  ): Promise<ApiResponse<Product>> {
+    const product = await this.productRepository.findOne({
+      where: {
+        id: productId,
+        business_id: businessId,
+      },
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    return successResponse(
+      'Current product stock retrieved successfully',
+      product,
+    );
+  }
+
+  /**
+   * ─────────────────────────────────────────────
+   * WAREHOUSE METRICS
+   * ─────────────────────────────────────────────
+   */
+  async getWarehouseMetrics(businessId: string): Promise<DashboardCard[]> {
+    const result = await this.productRepository
       .createQueryBuilder('product')
-      .select('COALESCE(SUM(product.stockQuantity), 0)', 'totalStock')
+      .select('COALESCE(SUM(product.stock_quantity), 0)', 'totalStock')
       .addSelect(
-        'SUM(CASE WHEN product.stockQuantity <= product.reorderLevel THEN 1 ELSE 0 END)',
+        `
+        SUM(
+          CASE
+            WHEN product.stock_quantity <= product.reorder_level
+            THEN 1
+            ELSE 0
+          END
+        )
+        `,
         'lowStock',
       )
       .addSelect(
-        'SUM(CASE WHEN product.stockQuantity = 0 THEN 1 ELSE 0 END)',
+        `
+        SUM(
+          CASE
+            WHEN product.stock_quantity = 0
+            THEN 1
+            ELSE 0
+          END
+        )
+        `,
         'outOfStock',
       )
+      .where('product.business_id = :businessId', {
+        businessId,
+      })
       .getRawOne<{
         totalStock: string;
         lowStock: string;
@@ -216,20 +462,20 @@ export class StocksService {
       {
         id: 'total-stock',
         title: 'Total Stock',
-        value: Number(result?.totalStock),
+        value: Number(result?.totalStock ?? 0),
         severity: 'success',
       },
       {
         id: 'low-stock',
         title: 'Low Stock',
-        value: Number(result?.lowStock),
-        severity: Number(result?.lowStock) > 0 ? 'warning' : 'success',
+        value: Number(result?.lowStock ?? 0),
+        severity: Number(result?.lowStock ?? 0) > 0 ? 'warning' : 'success',
       },
       {
         id: 'out-of-stock',
         title: 'Out of Stock',
-        value: Number(result?.outOfStock),
-        severity: Number(result?.outOfStock) > 0 ? 'danger' : 'success',
+        value: Number(result?.outOfStock ?? 0),
+        severity: Number(result?.outOfStock ?? 0) > 0 ? 'danger' : 'success',
       },
     ];
   }
