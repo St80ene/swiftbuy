@@ -20,7 +20,9 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT') || 3000;
 
-  const logger = new Logger('SeedingInit');
+  
+  if(configService.get<string>(NODE_ENV === 'development')){
+    const logger = new Logger('SeedingInit');
 
   try {
     const dataSource = app.get(DataSource);
@@ -41,7 +43,7 @@ async function bootstrap() {
     }
     process.exitCode = 1;
   }
-
+  }
   app.enableCors({
     origin: '*',
   });
