@@ -4,6 +4,7 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
@@ -17,6 +18,8 @@ import { PurchaseOrder } from '../../purchase_orders/entities/purchase_order.ent
 import { User } from '../../users/entities/user.entity';
 
 @Entity('stores')
+@Index(['business_id', 'code'], { unique: true })
+@Index(['business_id', 'name'], { unique: true })
 export class Store extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
