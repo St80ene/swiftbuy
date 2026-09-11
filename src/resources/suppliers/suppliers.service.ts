@@ -61,7 +61,7 @@ export class SuppliersService {
   }
 
   async findAll(query: SupplierQueryDto): Promise<ApiResponse<any>> {
-    const { search, sortBy = 'createdAt', order = 'DESC' } = query;
+    const { search, sortBy = 'created_at', order = 'DESC' } = query;
 
     const { page, limit, skip } = getPaginationOptions(query);
 
@@ -206,7 +206,7 @@ export class SuppliersService {
       });
     }
 
-    qb.orderBy('po.createdAt', 'DESC');
+    qb.orderBy('po.created_at', 'DESC');
 
     qb.skip(skip).take(limit);
 

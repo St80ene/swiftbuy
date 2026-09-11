@@ -11,6 +11,10 @@ import {
   AuditLogAction,
   AuditLogEntity,
 } from '../../common/enum/audit_log.enum';
+import {
+  StockMovementType,
+  StockMovementAction,
+} from '../../resources/stock_movements/entities/stock_movement.entity';
 
 export class InitialSchema1783699991545 implements MigrationInterface {
   name = 'InitialSchema1783699991545';
@@ -394,6 +398,12 @@ export class InitialSchema1783699991545 implements MigrationInterface {
             name: 'created_at',
             type: 'datetime',
             default: 'CURRENT_TIMESTAMP',
+          },
+          {
+            name: 'updated_at',
+            type: 'datetime',
+            default: 'CURRENT_TIMESTAMP',
+            onUpdate: 'CURRENT_TIMESTAMP',
           },
         ],
       }),
@@ -1060,6 +1070,11 @@ export class InitialSchema1783699991545 implements MigrationInterface {
             length: '36',
           },
           {
+            name: 'business_id',
+            type: 'varchar',
+            length: '36',
+          },
+          {
             name: 'quantity',
             type: 'int',
             default: 0,
@@ -1132,6 +1147,7 @@ export class InitialSchema1783699991545 implements MigrationInterface {
     await queryRunner.createTable(
       new Table({
         name: 'stock_movements',
+
         columns: [
           {
             name: 'id',
@@ -1139,53 +1155,169 @@ export class InitialSchema1783699991545 implements MigrationInterface {
             length: '36',
             isPrimary: true,
           },
+
+          {
+            name: 'business_id',
+            type: 'varchar',
+            length: '36',
+          },
+
           {
             name: 'store_id',
             type: 'varchar',
             length: '36',
           },
+
+          {
+            name: 'stock_id',
+            type: 'varchar',
+            length: '36',
+          },
+
           {
             name: 'product_id',
             type: 'varchar',
             length: '36',
           },
-          {
-            name: 'type',
-            type: 'varchar',
-            length: '30',
-          },
-          {
-            name: 'reason',
-            type: 'varchar',
-            length: '100',
-          },
-          {
-            name: 'quantity',
-            type: 'int',
-          },
-          {
-            name: 'unit_cost_price',
-            type: 'decimal',
-            precision: 10,
-            scale: 2,
-          },
-          {
-            name: 'unit_selling_price',
-            type: 'decimal',
-            precision: 10,
-            scale: 2,
-            default: 0,
-          },
+
           {
             name: 'created_by_id',
             type: 'varchar',
             length: '36',
             isNullable: true,
           },
+
+          {
+            name: 'type',
+            type: 'varchar',
+            length: '30',
+            default: `'${StockMovementType.RECEIPT}'`,
+          },
+
+          {
+            name: 'action',
+            type: 'varchar',
+            length: '30',
+            default: `'${StockMovementAction.CREATE}'`,
+          },
+
+          {
+            name: 'quantity',
+            type: 'int',
+          },
+
+          {
+            name: 'quantity_before',
+            type: 'int',
+          },
+
+          {
+            name: 'quantity_after',
+            type: 'int',
+          },
+
+          {
+            name: 'unit_cost_price',
+            type: 'decimal',
+            precision: 12,
+            scale: 2,
+          },
+
+          {
+            name: 'unit_selling_price',
+            type: 'decimal',
+            precision: 12,
+            scale: 2,
+            isNullable: true,
+          },
+
+          {
+            name: 'reason',
+            type: 'varchar',
+            length: '500',
+            isNullable: true,
+          },
+
+          {
+            name: 'reference_type',
+            type: 'varchar',
+            length: '50',
+            isNullable: true,
+          },
+
+          {
+            name: 'reference_id',
+            type: 'varchar',
+            length: '36',
+            isNullable: true,
+          },
+
           {
             name: 'created_at',
             type: 'datetime',
             default: 'CURRENT_TIMESTAMP',
+          },
+        ],
+
+        indices: [
+          {
+            name: 'IDX_STOCK_MOVEMENTS_BUSINESS_CREATED_AT',
+            columnNames: ['business_id', 'created_at'],
+          },
+          {
+            name: 'IDX_STOCK_MOVEMENTS_STORE_PRODUCT_CREATED_AT',
+            columnNames: ['store_id', 'product_id', 'created_at'],
+          },
+          {
+            name: 'IDX_STOCK_MOVEMENTS_STOCK_CREATED_AT',
+            columnNames: ['stock_id', 'created_at'],
+          },
+          {
+            name: 'IDX_STOCK_MOVEMENTS_CREATED_BY',
+            columnNames: ['created_by_id'],
+          },
+        ],
+
+        foreignKeys: [
+          {
+            name: 'FK_STOCK_MOVEMENTS_BUSINESS',
+            columnNames: ['business_id'],
+            referencedTableName: 'businesses',
+            referencedColumnNames: ['id'],
+            onDelete: 'RESTRICT',
+            onUpdate: 'CASCADE',
+          },
+          {
+            name: 'FK_STOCK_MOVEMENTS_STORE',
+            columnNames: ['store_id'],
+            referencedTableName: 'stores',
+            referencedColumnNames: ['id'],
+            onDelete: 'RESTRICT',
+            onUpdate: 'CASCADE',
+          },
+          {
+            name: 'FK_STOCK_MOVEMENTS_STOCK',
+            columnNames: ['stock_id'],
+            referencedTableName: 'stocks',
+            referencedColumnNames: ['id'],
+            onDelete: 'RESTRICT',
+            onUpdate: 'CASCADE',
+          },
+          {
+            name: 'FK_STOCK_MOVEMENTS_PRODUCT',
+            columnNames: ['product_id'],
+            referencedTableName: 'products',
+            referencedColumnNames: ['id'],
+            onDelete: 'RESTRICT',
+            onUpdate: 'CASCADE',
+          },
+          {
+            name: 'FK_STOCK_MOVEMENTS_CREATED_BY',
+            columnNames: ['created_by_id'],
+            referencedTableName: 'users',
+            referencedColumnNames: ['id'],
+            onDelete: 'SET NULL',
+            onUpdate: 'CASCADE',
           },
         ],
       }),

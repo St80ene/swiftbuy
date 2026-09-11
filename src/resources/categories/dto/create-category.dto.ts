@@ -2,7 +2,6 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsUUID,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -27,10 +26,4 @@ export class CreateCategoryDto {
     message: 'Category description must not exceed 1000 characters',
   })
   description?: string;
-
-  @IsNotEmpty({ message: 'Business ID is required' })
-  @IsUUID('4', {
-    message: 'Business ID must be a valid UUID',
-  })
-  business_id!: string;
 }

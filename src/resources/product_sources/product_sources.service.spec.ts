@@ -148,7 +148,7 @@ describe('ProductSourcesService', () => {
       expect(mockProductSourcesRepository.findAndCount).toHaveBeenCalledWith({
         skip: 0,
         take: 10,
-        order: { createdAt: 'DESC' },
+        order: { created_at: 'DESC' },
       });
       expect(result).toEqual(
         successResponse('Product sources retrieved successfully', {

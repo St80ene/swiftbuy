@@ -6,11 +6,13 @@ import {
   CreateDateColumn,
   Entity,
   JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { OneToOne } from 'typeorm';
 import { Product } from '../../products/entities/product.entity';
+import { Business } from '../../business/entities/business.entity';
+import { Store } from '../../stores/entities/store.entity';
 
 // Core Ledger Flow Enums
 export enum MutationType {
@@ -28,10 +30,11 @@ export enum MutationReason {
   NEW_PRODUCT_INITIALIZATION = 'NEW_PRODUCT_INITIALIZATION',
 }
 
-@Entity({ name: 'stocks' })
+@Entity('stocks')
 export class Stocks extends BaseEntity {
   constructor(props?: Partial<Stocks>) {
     super();
+
     if (props) {
       Object.assign(this, props);
     }
@@ -42,6 +45,12 @@ export class Stocks extends BaseEntity {
 
   @Column({ type: 'varchar', length: 36 })
   product_id!: string;
+
+  @Column({ type: 'varchar', length: 36 })
+  business_id!: string;
+
+  @Column({ type: 'varchar', length: 36 })
+  store_id!: string;
 
   @Column({
     type: 'varchar',
@@ -69,17 +78,36 @@ export class Stocks extends BaseEntity {
   })
   unit_selling_price!: number;
 
-  @OneToOne(() => Product, (product) => product.stock, {
+  @ManyToOne(() => Product, (product) => product.stocks, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'product_id' })
   product!: Product;
 
+  @ManyToOne(() => Business, (business) => business.stocks, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'business_id' })
+  business!: Business;
+
+  @ManyToOne(() => Store, (store) => store.stocks, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'store_id' })
+  store!: Store;
+
   @CreateDateColumn({
     type: 'datetime',
     default: () => 'CURRENT_TIMESTAMP',
   })
-  createdAt!: Date;
+  created_at!: Date;
+
+  @UpdateDateColumn({
+    type: 'datetime',
+    default: () => 'CURRENT_TIMESTAMP',
+    onUpdate: 'CURRENT_TIMESTAMP',
+  })
+  updated_at!: Date;
 }
 
 export class AdjustStockDto {

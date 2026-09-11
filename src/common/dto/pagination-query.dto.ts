@@ -130,3 +130,27 @@ export interface PaginationMeta {
   hasNextPage: boolean;
   hasPreviousPage: boolean;
 }
+
+export const STORE_SORT_FIELDS: Record<string, string> = {
+  name: 'store.name',
+  code: 'store.code',
+  city: 'store.city',
+  state: 'store.state',
+  created_at: 'store.created_at',
+  updated_at: 'store.updated_at',
+} as const;
+
+export type StoreSortField = (typeof STORE_SORT_FIELD_NAMES)[number];
+
+export const STORE_SORT_FIELD_NAMES = Object.keys(STORE_SORT_FIELDS);
+export class StorePaginationQueryDto extends BasePaginationQueryDto {
+  @IsOptional()
+  @IsIn(Object.keys(STORE_SORT_FIELDS))
+  sortBy?: StoreSortField = 'created_at';
+
+  @IsOptional()
+  @IsIn(['ASC', 'DESC'])
+  order?: 'ASC' | 'DESC' = 'DESC';
+
+  [key: string]: unknown;
+}

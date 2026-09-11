@@ -194,6 +194,7 @@ export class ProductsService {
 
       const queryBuilder = this.productRepository
         .createQueryBuilder('product')
+        .leftJoinAndSelect('product.category', 'category')
         .where('product.deleted_at IS NULL')
         .andWhere('product.business_id = :businessId', {
           businessId: user.businessId,
@@ -262,7 +263,7 @@ export class ProductsService {
   ): Promise<ApiResponse<Product>> {
     const product = await this.productRepository.findOne({
       where: { id, business_id: user.businessId, deleted_at: IsNull() },
-      relations: { stock: true, category: true },
+      relations: { stocks: true, category: true },
     });
 
     if (!product) {
@@ -393,7 +394,7 @@ export class ProductsService {
         metadata: {
           productName: updatedProduct.name,
           businessId: user.businessId,
-          updatedAt: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
           reason: `${updatedProduct.name} was updated by user`,
         },
       });

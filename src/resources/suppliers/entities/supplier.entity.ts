@@ -20,9 +20,6 @@ export class Supplier {
   @Column({ type: 'varchar', length: 255, nullable: true })
   email?: string;
 
-  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
-  createdAt!: Date;
-
   @OneToMany(() => ProductSource, (productSource) => productSource.supplier)
   productSources!: ProductSource[];
 

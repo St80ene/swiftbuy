@@ -30,12 +30,13 @@ export class CategoriesService {
 
   async create(
     createCategoryDto: CreateCategoryDto,
+    businessId: string,
   ): Promise<ApiResponse<Category>> {
-    const { business_id, name, description } = createCategoryDto;
+    const { name, description } = createCategoryDto;
 
     // Verify that the business exists
     const business = await this.businessRepository.findOne({
-      where: { id: business_id },
+      where: { id: businessId },
     });
 
     if (!business) {
@@ -45,7 +46,7 @@ export class CategoriesService {
     // Prevent duplicate category names within the same business
     const existingCategory = await this.categoryRepository.findOne({
       where: {
-        business_id,
+        business_id: businessId,
         name,
       },
     });
@@ -57,7 +58,7 @@ export class CategoriesService {
     }
 
     const category = this.categoryRepository.create({
-      business_id,
+      business_id: businessId,
       name,
       description,
       business,
@@ -83,7 +84,7 @@ export class CategoriesService {
       skip,
     } = getPaginationOptions(paginationQuery);
 
-    const { search, order = 'DESC', sortBy = 'createdAt' } = paginationQuery;
+    const { search, order = 'DESC', sortBy = 'created_at' } = paginationQuery;
 
     const sortColumn = CATEGORY_SORT_FIELDS[sortBy];
 
@@ -92,6 +93,8 @@ export class CategoriesService {
 
     const queryBuilder = this.categoryRepository
       .createQueryBuilder('category')
+      .leftJoinAndSelect('category.business', 'business')
+      .leftJoinAndSelect('category.products', 'products')
       .where('category.business_id = :businessId', {
         businessId,
       });

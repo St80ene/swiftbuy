@@ -4,18 +4,22 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Stocks } from '../../stocks/entities/stock.entity';
 import { AuditLog } from '../../audit_logs/entities/audit_log.entity';
 import { Business } from '../../business/entities/business.entity';
 import { PurchaseOrder } from '../../purchase_orders/entities/purchase_order.entity';
 import { User } from '../../users/entities/user.entity';
 
 @Entity('stores')
+@Index(['business_id', 'code'], { unique: true })
+@Index(['business_id', 'name'], { unique: true })
 export class Store extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -56,6 +60,9 @@ export class Store extends BaseEntity {
 
   @OneToMany(() => User, (user) => user.store)
   users!: User[];
+
+  @OneToMany(() => Stocks, (stock) => stock.store)
+  stocks!: Stocks[];
 
   @OneToMany(() => PurchaseOrder, (purchase_order) => purchase_order.store)
   purchase_orders!: PurchaseOrder[];
