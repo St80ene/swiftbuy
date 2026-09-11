@@ -224,59 +224,59 @@ export class PurchaseOrdersService {
     return successResponse('Purchase order record deleted successfully.', null);
   }
 
-  private async createOrUpdateDraftForSupplier(
-    supplierId: string,
-    productsToReplenish: Product[],
-    creatorId: string,
-  ) {
-    // Check if an open DRAFT Purchase Order already exists for this supplier
-    const existingDraft = await this.purchaseOrderRepository.findOne({
-      where: {
-        supplier_id: supplierId, // Switched from supplier_name to secure relation ID
-        status: PurchaseOrderStatus.DRAFT,
-      },
-      relations: { items: true },
-    });
+  // private async createOrUpdateDraftForSupplier(
+  //   supplierId: string,
+  //   productsToReplenish: Product[],
+  //   creatorId: string,
+  // ) {
+  //   // Check if an open DRAFT Purchase Order already exists for this supplier
+  //   const existingDraft = await this.purchaseOrderRepository.findOne({
+  //     where: {
+  //       supplier_id: supplierId, // Switched from supplier_name to secure relation ID
+  //       status: PurchaseOrderStatus.DRAFT,
+  //     },
+  //     relations: { items: true },
+  //   });
 
-    if (!existingDraft) {
-      // Create a fresh draft Purchase Order
-      const newDraft = new CreatePurchaseOrderDto();
-      newDraft.supplier_id = supplierId;
+  //   if (!existingDraft) {
+  //     // Create a fresh draft Purchase Order
+  //     const newDraft = new CreatePurchaseOrderDto();
+  //     newDraft.supplier_id = supplierId;
 
-      newDraft.items = productsToReplenish.map((product) => {
-        const replenishmentQty = Math.max(product.reorder_level * 2, 10);
-        return {
-          product_id: product.id,
-          quantity: replenishmentQty,
-          unit_price: product.cost_price,
-        };
-      });
+  //     newDraft.items = productsToReplenish.map((product) => {
+  //       const replenishmentQty = Math.max(product.reorder_level * 2, 10);
+  //       return {
+  //         product_id: product.id,
+  //         quantity: replenishmentQty,
+  //         unit_price: product.cost_price,
+  //       };
+  //     });
 
-      await this.create(newDraft, creatorId);
-    } else {
-      // Merge deficient items into the existing open draft if they aren't already listed
-      const existingProductIds = new Set(
-        existingDraft.items.map((item) => item.product_id),
-      );
+  //     await this.create(newDraft, creatorId);
+  //   } else {
+  //     // Merge deficient items into the existing open draft if they aren't already listed
+  //     const existingProductIds = new Set(
+  //       existingDraft.items.map((item) => item.product_id),
+  //     );
 
-      const newItemsToAdd = productsToReplenish
-        .filter((product) => !existingProductIds.has(product.id))
-        .map((product) => {
-          const replenishmentQty = Math.max(product.reorder_level * 2, 10);
-          return {
-            product_id: product.id,
-            product_name: product.name,
-            quantity: replenishmentQty,
-            unit_price: product.cost_price,
-            purchaseOrder: existingDraft,
-          };
-        });
+  //     const newItemsToAdd = productsToReplenish
+  //       .filter((product) => !existingProductIds.has(product.id))
+  //       .map((product) => {
+  //         const replenishmentQty = Math.max(product.reorder_level * 2, 10);
+  //         return {
+  //           product_id: product.id,
+  //           product_name: product.name,
+  //           quantity: replenishmentQty,
+  //           unit_price: product.cost_price,
+  //           purchaseOrder: existingDraft,
+  //         };
+  //       });
 
-      if (newItemsToAdd.length > 0) {
-        await this.purchaseOrderRepository.manager.save(newItemsToAdd);
-      }
-    }
-  }
+  //     if (newItemsToAdd.length > 0) {
+  //       await this.purchaseOrderRepository.manager.save(newItemsToAdd);
+  //     }
+  //   }
+  // }
 
   async getPurchaseOrderPipeline(): Promise<DashboardCard[]> {
     const result: Record<string, any> | undefined =
@@ -348,86 +348,86 @@ export class PurchaseOrdersService {
     ];
   }
 
-  async getSupplierProducts(
-    supplierId: string,
-    query: BasePaginationQueryDto,
-  ): Promise<ApiResponse<any>> {
-    await this.supplierService.getSupplierOrThrow(supplierId);
+  // async getSupplierProducts(
+  //   supplierId: string,
+  //   query: BasePaginationQueryDto,
+  // ): Promise<ApiResponse<any>> {
+  //   await this.supplierService.getSupplierOrThrow(supplierId);
 
-    const { page, limit, skip } = getPaginationOptions(query);
+  //   const { page, limit, skip } = getPaginationOptions(query);
 
-    const qb = this.productRepository
-      .createQueryBuilder('product')
-      .innerJoin('product.source', 'source')
-      .where('source.supplier_id = :supplierId', {
-        supplierId,
-      });
+  //   const qb = this.productRepository
+  //     .createQueryBuilder('product')
+  //     .innerJoin('product.source', 'source')
+  //     .where('source.supplier_id = :supplierId', {
+  //       supplierId,
+  //     });
 
-    qb.skip(skip).take(limit);
+  //   qb.skip(skip).take(limit);
 
-    const [products, total] = await qb.getManyAndCount();
+  //   const [products, total] = await qb.getManyAndCount();
 
-    return successResponse('Supplier products retrieved successfully', {
-      products,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    });
-  }
+  //   return successResponse('Supplier products retrieved successfully', {
+  //     products,
+  //     pagination: {
+  //       page,
+  //       limit,
+  //       total,
+  //       totalPages: Math.ceil(total / limit),
+  //     },
+  //   });
+  // }
 
   // CRON Task: Automatically create a new draft purchase order for each supplier if none exists based on stock replenishment needs
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  async runAutoReplenishment(creatorId: string) {
-    // Get all products that are below their reorder threshold
-    const lowStockProducts: Product[] = await this.productRepository
-      .createQueryBuilder('product')
-      .where('product.stock_quantity <= product.reorder_level')
-      .getMany();
+  // @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  // async runAutoReplenishment(creatorId: string) {
+  //   // Get all products that are below their reorder threshold
+  //   const lowStockProducts: Product[] = await this.productRepository
+  //     .createQueryBuilder('product')
+  //     .where('product.stock_quantity <= product.reorder_level')
+  //     .getMany();
 
-    if (lowStockProducts?.length === 0) {
-      return; // All shelves optimally stocked!
-    }
+  //   if (lowStockProducts?.length === 0) {
+  //     return; // All shelves optimally stocked!
+  //   }
 
-    // Get the IDs of these low-stock products to find their active suppliers
-    const productIds: string[] = lowStockProducts.map((p) => p.id);
+  //   // Get the IDs of these low-stock products to find their active suppliers
+  //   const productIds: string[] = lowStockProducts.map((p) => p.id);
 
-    const activeSuppliers = await this.productSourceRepository.find({
-      where: {
-        product_id: In(productIds),
-      },
-      relations: {
-        supplier: true,
-        product: true,
-      },
-    });
+  //   const activeSuppliers = await this.productSourceRepository.find({
+  //     where: {
+  //       product_id: In(productIds),
+  //     },
+  //     relations: {
+  //       supplier: true,
+  //       product: true,
+  //     },
+  //   });
 
-    const replenishmentMap = new Map<
-      string,
-      { supplierName: string; products: Product[] }
-    >();
+  //   const replenishmentMap = new Map<
+  //     string,
+  //     { supplierName: string; products: Product[] }
+  //   >();
 
-    for (const source of activeSuppliers) {
-      if (!source.supplier || !source.product) continue;
+  //   for (const source of activeSuppliers) {
+  //     if (!source.supplier || !source.product) continue;
 
-      const supplierId: string = source['supplier']['id'];
-      const supplierName: string = source['supplier']['name'];
+  //     const supplierId: string = source['supplier']['id'];
+  //     const supplierName: string = source['supplier']['name'];
 
-      if (!replenishmentMap.has(`${supplierId}`)) {
-        replenishmentMap.set(`${supplierId}`, { supplierName, products: [] });
-      }
+  //     if (!replenishmentMap.has(`${supplierId}`)) {
+  //       replenishmentMap.set(`${supplierId}`, { supplierName, products: [] });
+  //     }
 
-      replenishmentMap.get(`${supplierId}`)!.products.push(source.product);
-    }
+  //     replenishmentMap.get(`${supplierId}`)!.products.push(source.product);
+  //   }
 
-    for (const [supplierId, info] of replenishmentMap.entries()) {
-      await this.createOrUpdateDraftForSupplier(
-        supplierId,
-        info.products,
-        creatorId,
-      );
-    }
-  }
+  //   for (const [supplierId, info] of replenishmentMap.entries()) {
+  //     await this.createOrUpdateDraftForSupplier(
+  //       supplierId,
+  //       info.products,
+  //       creatorId,
+  //     );
+  //   }
+  // }
 }

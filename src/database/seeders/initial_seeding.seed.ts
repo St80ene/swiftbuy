@@ -24,12 +24,8 @@ import {
 } from '../../resources/products/entities/product.entity';
 
 import {
-  MutationReason,
-  MutationType,
-} from '../../resources/stocks/entities/stock.entity';
-import {
+  StockMovementDirection,
   StockMovementType,
-  StockMovementAction,
 } from '../../resources/stock_movements/entities/stock_movement.entity';
 
 export class InitialSeeding1785451531000 implements MigrationInterface {
@@ -176,7 +172,7 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
       {
         id: randomUUID(),
         name: 'Beverages & Drinks',
-        description: 'Coffee beans, bottled waters, teas, and soft beverages',
+        description: 'Coffee beans, bottled water, tea, and soft beverages',
       },
       {
         id: randomUUID(),
@@ -268,6 +264,13 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
      * ============================================================
      * 5. PRODUCTS
      * ============================================================
+     *
+     * Product contains product/master information only.
+     *
+     * IMPORTANT:
+     * Product does NOT contain stock_quantity.
+     *
+     * Inventory quantity belongs to the Stock entity.
      */
 
     const productDefinitions = [
@@ -393,34 +396,23 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
 
       const sellingPrice = Number((costPrice * markup).toFixed(2));
 
-      const stockQuantity = faker.number.int({
-        min: 5,
-        max: 150,
-      });
-
-      const reorderLevel = faker.number.int({
-        min: 5,
-        max: 30,
-      });
-
       return {
         id: randomUUID(),
         business_id: businessId,
         category_id: categorySeedData[product.categoryIndex].id,
+
         name: product.name,
         description: faker.commerce.productDescription(),
         images: JSON.stringify([]),
-        stock_quantity: stockQuantity,
+
         cost_price: costPrice,
         selling_price: sellingPrice,
-        reorder_level: reorderLevel,
+
         uom_type: product.uom_type,
         uom_base_name: product.uom_base_name,
         uom_display_name: product.uom_display_name,
-        status:
-          stockQuantity <= reorderLevel
-            ? ProductStatus.INACTIVE
-            : ProductStatus.ACTIVE,
+
+        status: ProductStatus.ACTIVE,
       };
     });
 
@@ -432,10 +424,8 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
             name,
             description,
             images,
-            stock_quantity,
             cost_price,
             selling_price,
-            reorder_level,
             uom_type,
             uom_base_name,
             uom_display_name,
@@ -443,17 +433,15 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
             category_id,
             business_id
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
         [
           product.id,
           product.name,
           product.description,
           product.images,
-          product.stock_quantity,
           product.cost_price,
           product.selling_price,
-          product.reorder_level,
           product.uom_type,
           product.uom_base_name,
           product.uom_display_name,
@@ -466,23 +454,83 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
 
     /**
      * ============================================================
-     * 6. INITIAL STOCK RECORDS
+     * 6. STOCK BALANCES
      * ============================================================
      *
-     * Stock is store-specific.
+     * Stock is the CURRENT inventory balance.
      *
-     * Each product is initially stocked in the main store.
+     * It is:
+     *
+     *   Product + Store = Stock
+     *
+     * The product itself does not own quantity.
      */
 
-    const stockSeedData = productSeedData.map((product) => ({
-      id: randomUUID(),
-      business_id: businessId,
-      store_id: mainStoreId,
-      product_id: product.id,
-      quantity: product.stock_quantity,
-      unit_cost_price: product.cost_price,
-      unit_selling_price: product.selling_price,
-    }));
+    const stockSeedData = productSeedData.map((product) => {
+      let quantity: number;
+      let reorderLevel: number;
+
+      switch (product.uom_base_name) {
+        case UomBaseName.G:
+          /**
+           * Base UOM = grams.
+           *
+           * 1kg = 1000g.
+           */
+          quantity = faker.number.int({
+            min: 5000,
+            max: 150000,
+          });
+
+          reorderLevel = faker.number.int({
+            min: 2000,
+            max: 10000,
+          });
+
+          break;
+
+        case UomBaseName.ML:
+          /**
+           * Base UOM = millilitres.
+           *
+           * 1L = 1000ml.
+           */
+          quantity = faker.number.int({
+            min: 5000,
+            max: 150000,
+          });
+
+          reorderLevel = faker.number.int({
+            min: 2000,
+            max: 10000,
+          });
+
+          break;
+
+        case UomBaseName.PCS:
+        default:
+          quantity = faker.number.int({
+            min: 5,
+            max: 150,
+          });
+
+          reorderLevel = faker.number.int({
+            min: 5,
+            max: 30,
+          });
+
+          break;
+      }
+
+      return {
+        id: randomUUID(),
+        business_id: businessId,
+        store_id: mainStoreId,
+        product_id: product.id,
+        quantity,
+        reorder_level: reorderLevel,
+      };
+    });
 
     for (const stock of stockSeedData) {
       await queryRunner.query(
@@ -492,24 +540,18 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
             business_id,
             store_id,
             product_id,
-            type,
-            reason,
             quantity,
-            unit_cost_price,
-            unit_selling_price
+            reorder_level
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?)
         `,
         [
           stock.id,
           stock.business_id,
           stock.store_id,
           stock.product_id,
-          MutationType.INFLOW,
-          MutationReason.NEW_PRODUCT_INITIALIZATION,
           stock.quantity,
-          stock.unit_cost_price,
-          stock.unit_selling_price,
+          stock.reorder_level,
         ],
       );
     }
@@ -650,13 +692,11 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
      * ============================================================
      * 11. USER AUTHENTICATION
      * ============================================================
-     *
-     * Passwords must never be written to audit logs.
      */
 
     const userAuthRepository = queryRunner.manager.getRepository(UserAuth);
 
-    const password: string = await passwordHasher('Test@123!#');
+    const password = await passwordHasher('Test@123!#');
 
     const userAuth = userAuthRepository.create({
       user_id: savedAdmin.id,
@@ -671,28 +711,57 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
      * 12. INITIAL STOCK MOVEMENTS
      * ============================================================
      *
-     * Every initial stock balance receives a corresponding
-     * immutable ledger entry.
+     * Each Stock balance gets one immutable opening
+     * StockMovement.
+     *
+     * IMPORTANT:
+     *
+     * StockMovement.quantity is ALWAYS positive.
+     *
+     * direction = IN
+     *
+     * quantity_before = 0
+     *
+     * quantity_after = current opening balance
+     *
+     * There is intentionally no reference_type here because
+     * INITIAL_STOCK is not a valid StockMovementReferenceType.
      */
 
-    const stockMovementSeedData = stockSeedData.map((stock) => ({
-      id: randomUUID(),
-      business_id: stock.business_id,
-      store_id: stock.store_id,
-      stock_id: stock.id,
-      product_id: stock.product_id,
-      created_by_id: savedAdmin.id,
-      type: StockMovementType.RECEIPT,
-      action: StockMovementAction.IN,
-      quantity: stock.quantity,
-      quantity_before: 0,
-      quantity_after: stock.quantity,
-      unit_cost_price: stock.unit_cost_price,
-      unit_selling_price: stock.unit_selling_price,
-      reason: 'Initial inventory setup',
-      reference_type: 'INITIAL_STOCK',
-      reference_id: stock.id,
-    }));
+    const stockMovementSeedData = stockSeedData.map((stock) => {
+      const product = productSeedData.find(
+        (product) => product.id === stock.product_id,
+      );
+
+      if (!product) {
+        throw new Error(
+          `Product "${stock.product_id}" could not be found for stock movement seed.`,
+        );
+      }
+
+      return {
+        id: randomUUID(),
+
+        business_id: stock.business_id,
+        stock_id: stock.id,
+        created_by_id: savedAdmin.id,
+
+        type: StockMovementType.RECEIPT,
+        direction: StockMovementDirection.IN,
+
+        quantity: stock.quantity,
+        quantity_before: 0,
+        quantity_after: stock.quantity,
+
+        unit_cost_price: product.cost_price,
+        unit_selling_price: product.selling_price,
+
+        reason: 'Initial inventory setup',
+
+        reference_type: null,
+        reference_id: null,
+      };
+    });
 
     for (const movement of stockMovementSeedData) {
       await queryRunner.query(
@@ -700,12 +769,10 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
           INSERT INTO stock_movements (
             id,
             business_id,
-            store_id,
             stock_id,
-            product_id,
             created_by_id,
             type,
-            action,
+            direction,
             quantity,
             quantity_before,
             quantity_after,
@@ -716,17 +783,15 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
             reference_id,
             created_at
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         `,
         [
           movement.id,
           movement.business_id,
-          movement.store_id,
           movement.stock_id,
-          movement.product_id,
           movement.created_by_id,
           movement.type,
-          movement.action,
+          movement.direction,
           movement.quantity,
           movement.quantity_before,
           movement.quantity_after,
@@ -743,12 +808,6 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
      * ============================================================
      * 13. AUDIT LOGS
      * ============================================================
-     *
-     * Audit logs record important business events, not every
-     * technical row inserted by this migration.
-     *
-     * Passwords and authentication secrets are intentionally
-     * excluded.
      */
 
     const auditLogs = [
@@ -804,6 +863,10 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
 
       /**
        * Product creation
+       *
+       * Notice:
+       * No stock quantity is recorded here because Product
+       * no longer owns inventory.
        */
       ...productSeedData.map((product) => ({
         id: randomUUID(),
@@ -817,7 +880,6 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
           category_id: product.category_id,
           cost_price: product.cost_price,
           selling_price: product.selling_price,
-          reorder_level: product.reorder_level,
           uom_type: product.uom_type,
           uom_base_name: product.uom_base_name,
           uom_display_name: product.uom_display_name,
@@ -827,7 +889,7 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
           source: 'initial_seed',
         },
         business_id: businessId,
-        store_id: mainStoreId,
+        store_id: null,
       })),
 
       /**
@@ -844,13 +906,13 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
         },
         new_value: {
           quantity: stock.quantity,
-          unit_cost_price: stock.unit_cost_price,
-          unit_selling_price: stock.unit_selling_price,
+          reorder_level: stock.reorder_level,
           product_id: stock.product_id,
+          store_id: stock.store_id,
         },
         metadata: {
           source: 'initial_seed',
-          reason: MutationReason.NEW_PRODUCT_INITIALIZATION,
+          reason: 'Initial inventory setup',
         },
         business_id: businessId,
         store_id: stock.store_id,
@@ -865,24 +927,28 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
         user_id: savedAdmin.id,
         entity: AuditLogEntity.STOCK_MOVEMENT,
         entity_id: movement.id,
+
         old_value: {
           quantity: movement.quantity_before,
         },
+
         new_value: {
           quantity: movement.quantity_after,
           type: movement.type,
-          action: movement.action,
-          product_id: movement.product_id,
+          direction: movement.direction,
           stock_id: movement.stock_id,
         },
+
         metadata: {
           source: 'initial_seed',
           reason: movement.reason,
-          reference_type: movement.reference_type,
-          reference_id: movement.reference_id,
         },
-        business_id: businessId,
-        store_id: movement.store_id,
+
+        business_id: movement.business_id,
+
+        store_id:
+          stockSeedData.find((stock) => stock.id === movement.stock_id)
+            ?.store_id ?? null,
       })),
 
       /**
@@ -955,14 +1021,14 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
 
     const result: unknown = await queryRunner.query(
       `
-        SELECT
-          b.id
-        FROM businesses b
-        INNER JOIN users u
-          ON u.business_id = b.id
-        WHERE u.company_email = ?
-        LIMIT 1
-      `,
+          SELECT
+            b.id
+          FROM businesses b
+          INNER JOIN users u
+            ON u.business_id = b.id
+          WHERE u.company_email = ?
+          LIMIT 1
+        `,
       ['superadmin@swiftbuy.com'],
     );
 
@@ -1106,6 +1172,8 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
            OR name LIKE 'users.%'
            OR name LIKE 'businesses.%'
            OR name LIKE 'audit_logs.%'
+           OR name = 'purchase_orders.approve'
+           OR name = 'stocks.adjust'
       `,
     );
 

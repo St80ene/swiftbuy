@@ -112,4 +112,34 @@ export class ProductsController {
   ): Promise<ApiResponse<null>> {
     return this.productsService.remove(id, currentUser);
   }
+
+  /**
+   * Get current stock for a product.
+   *
+   * GET /products/stock/:productId
+   *
+   * Returns the stock balance for the authenticated user's store.
+   */
+  @Get('stock/:productId')
+  findCurrentStock(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('productId') productId: string,
+  ) {
+    return this.productsService.findCurrentProductStock(productId, user);
+  }
+
+  /**
+   * Get stock movement history for a product.
+   *
+   * GET /products/stock/:productId/history
+   *
+   * Returns the immutable inventory ledger for the product.
+   */
+  @Get('stock/:productId/history')
+  findProductStockHistory(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('productId') productId: string,
+  ) {
+    return this.productsService.findProductStockHistory(productId, user);
+  }
 }

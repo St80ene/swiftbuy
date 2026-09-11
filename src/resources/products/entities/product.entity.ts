@@ -11,9 +11,11 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+
 import { IsEnum } from 'class-validator';
+
 import { ProductSource } from '../../product_sources/entities/product_source.entity';
-import { Stocks } from '../../stocks/entities/stock.entity';
+import { Stock } from '../../stocks/entities/stock.entity';
 import { Category } from '../../categories/entities/category.entity';
 import { Business } from '../../business/entities/business.entity';
 import { CloudinaryImage } from '../../../common/utils/helpers/cloudinary/cloudinary.service';
@@ -53,76 +55,95 @@ export class Product extends BaseEntity {
   name!: string;
 
   @Column({ type: 'varchar', nullable: true })
-  description?: string;
+  description!: string | null;
 
-  @Column({ type: 'json', default: () => "('[]')" })
+  @Column({
+    type: 'json',
+    default: () => "('[]')",
+  })
   images!: CloudinaryImage[];
 
-  @Column({ type: 'int', default: 0 })
-  stock_quantity!: number;
-
-  @Column('decimal', { precision: 10, scale: 2, default: 0.0 })
+  /**
+   * Current/default product cost.
+   *
+   * This represents the product's current master pricing,
+   * not the historical cost of a stock transaction.
+   */
+  @Column('decimal', {
+    precision: 12,
+    scale: 2,
+    default: 0.0,
+  })
   cost_price!: number;
 
-  @Column('decimal', { precision: 10, scale: 2 })
+  /**
+   * Current/default selling price.
+   */
+  @Column('decimal', {
+    precision: 12,
+    scale: 2,
+  })
   selling_price!: number;
-
-  @Column({ type: 'int', default: 5 })
-  reorder_level!: number;
 
   @IsEnum(UomType, {
     message: 'Invalid UOM type. Must be one of: UNIT, WEIGHT, VOLUME.',
   })
-  @Column({ type: 'varchar', length: 20, default: UomType.UNIT })
-  uom_type!: UomType; // 'UNIT', 'WEIGHT', 'VOLUME'
+  @Column({
+    type: 'varchar',
+    length: 20,
+    default: UomType.UNIT,
+  })
+  uom_type!: UomType;
 
   @IsEnum(UomBaseName, {
     message: 'Invalid UOM base name. Must be one of: pcs, g, ml.',
   })
-  @Column({ type: 'varchar', length: 10, default: UomBaseName.PCS })
-  uom_base_name!: UomBaseName; // 'pcs', 'g', 'ml'
+  @Column({
+    type: 'varchar',
+    length: 10,
+    default: UomBaseName.PCS,
+  })
+  uom_base_name!: UomBaseName;
 
   @IsEnum(UomDisplayName, {
-    message: 'Invalid UOM display name. Must be one of: pcs, kg, L.',
+    message: 'Invalid UOM display name. Must be one of: pcs, g, kg, ml, L.',
   })
-  @Column({ type: 'varchar', length: 10, default: UomDisplayName.PCS })
-  uom_display_name!: UomDisplayName; // 'pcs', 'kg', 'L'
+  @Column({
+    type: 'varchar',
+    length: 10,
+    default: UomDisplayName.PCS,
+  })
+  uom_display_name!: UomDisplayName;
 
-  /**
-   * Product lifecycle status.
-   *
-   * ACTIVE:
-   * Product is currently available for normal operations.
-   *
-   * INACTIVE:
-   * Product is temporarily unavailable but still exists.
-   *
-   * ARCHIVED:
-   * Product has been permanently discontinued from normal operations.
-   */
   @IsEnum(ProductStatus, {
     message:
       'Invalid product status. Must be one of: ACTIVE, INACTIVE, ARCHIVED.',
   })
   @Column({
     type: 'varchar',
-    // enum: ProductStatus,
     default: ProductStatus.INACTIVE,
   })
   status!: ProductStatus;
 
-  // Bidirectional link: Let's us do: productRepository.find({ relations: { source: true } })
   @OneToOne(() => ProductSource, (source) => source.product)
   source!: ProductSource;
 
-  @OneToMany(() => Stocks, (stocks) => stocks.product)
-  stocks!: Stocks[];
+  @OneToMany(() => Stock, (stock) => stock.product)
+  stocks!: Stock[];
 
-  @Column({ type: 'char', length: 36, nullable: true })
-  category_id?: string;
+  @Column({
+    type: 'char',
+    length: 36,
+    nullable: true,
+  })
+  category_id!: string | null;
 
-  @Column({ type: 'char', length: 36, nullable: true })
-  business_id?: string;
+  @Column({
+    type: 'char',
+    length: 36,
+    nullable: false,
+  })
+  business_id!: string;
 
   @ManyToOne(() => Category, (category) => category.products, {
     nullable: true,
@@ -130,15 +151,15 @@ export class Product extends BaseEntity {
     onUpdate: 'CASCADE',
   })
   @JoinColumn({ name: 'category_id' })
-  category?: Category;
+  category!: Category | null;
 
   @ManyToOne(() => Business, (business) => business.products, {
-    nullable: true,
-    onDelete: 'SET NULL',
+    nullable: false,
+    onDelete: 'RESTRICT',
     onUpdate: 'CASCADE',
   })
   @JoinColumn({ name: 'business_id' })
-  business?: Business;
+  business!: Business;
 
   @CreateDateColumn({
     type: 'datetime',
