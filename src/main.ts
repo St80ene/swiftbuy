@@ -3,14 +3,14 @@ import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import {
   ClassSerializerInterceptor,
-  Logger,
+  // Logger,
   ValidationPipe,
 } from '@nestjs/common';
 import helmet from 'helmet';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { createLoggerConfig } from './common/logger/logger.config';
-import { DataSource } from 'typeorm';
-import { InitialSeeding1785451531000 } from './database/seeders/initial_seeding.seed';
+// import { DataSource } from 'typeorm';
+// import { InitialSeeding1785451531000 } from './database/seeders/initial_seeding.seed';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -20,7 +20,6 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT') || 3000;
 
-  
   // if(configService.get<string>(NODE_ENV === 'development')){
   //   const logger = new Logger('SeedingInit');
 
