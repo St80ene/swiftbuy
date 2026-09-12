@@ -29,9 +29,11 @@ import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.inte
 @Injectable()
 export class StocksService {
   constructor(
-    @InjectRepository(Product)
     @InjectRepository(Stock)
     private readonly stockRepository: Repository<Stock>,
+
+    @InjectRepository(Product)
+    private readonly productRepository: Repository<Product>,
   ) {}
 
   /**

@@ -27,7 +27,7 @@ import { User } from './entities/user.entity';
 
 import { ApiResponse } from '../../common/utils/response.utils';
 import type { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
-import { BasePaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { UserPaginationQueryDto } from '../../common/dto/pagination-query.dto';
 
 @Controller('users')
 export class UsersController {
@@ -65,8 +65,11 @@ export class UsersController {
    */
   @Get()
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
-  findAll(@Query() query: BasePaginationQueryDto) {
-    return this.usersService.findAll(query);
+  findAll(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Query() query: UserPaginationQueryDto,
+  ) {
+    return this.usersService.findAll(currentUser, query);
   }
 
   /**

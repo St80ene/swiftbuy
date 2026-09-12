@@ -369,19 +369,22 @@ export class ProductsService {
 
       const newProductDetails = structuredClone(updatedProduct);
 
-      await this.auditLogService.create({
-        action: AuditLogAction.UPDATE,
-        entity: AuditLogEntity.PRODUCT,
-        entityId: updatedProduct.id,
-        oldValue: oldProductDetails,
-        newValue: newProductDetails,
-        metadata: {
-          productName: updatedProduct.name,
-          businessId: user.businessId,
-          updated_at: new Date().toISOString(),
-          reason: `${updatedProduct.name} was updated by user`,
+      await this.auditLogService.create(
+        {
+          action: AuditLogAction.UPDATE,
+          entity: AuditLogEntity.PRODUCT,
+          entityId: updatedProduct.id,
+          oldValue: oldProductDetails,
+          newValue: newProductDetails,
+          metadata: {
+            productName: updatedProduct.name,
+            businessId: user.businessId,
+            updated_at: new Date().toISOString(),
+            reason: `${updatedProduct.name} was updated by user`,
+          },
         },
-      });
+        { businessId: user.businessId, storeId: user.storeId },
+      );
 
       await queryRunner.commitTransaction();
 
