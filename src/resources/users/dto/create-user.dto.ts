@@ -1,5 +1,4 @@
 import {
-  IsBoolean,
   IsEmail,
   IsOptional,
   IsUUID,
@@ -38,10 +37,6 @@ export class CreateUserDto {
   @IsString()
   @MaxLength(30)
   phone_number?: string;
-
-  @IsOptional()
-  @IsBoolean()
-  is_active?: boolean;
 
   @IsOptional()
   @IsUUID()

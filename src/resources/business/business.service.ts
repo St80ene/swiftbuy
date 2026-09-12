@@ -43,7 +43,7 @@ export class BusinessesService {
     createBusinessDto: CreateBusinessDto,
     file?: Express.Multer.File,
   ): Promise<ApiResponse<Business>> {
-    const { slug, registration_number, tax_identification_number } =
+    const { registration_number, tax_identification_number } =
       createBusinessDto;
 
     /**
@@ -54,18 +54,12 @@ export class BusinessesService {
      */
     const existingBusiness = await this.businessRepository.findOne({
       where: [
-        { slug, tax_identification_number },
+        { tax_identification_number },
         ...(registration_number ? [{ registration_number }] : []),
       ],
     });
 
     if (existingBusiness) {
-      if (existingBusiness.slug === slug) {
-        throw new ConflictException(
-          `Business slug '${slug}' is already in use.`,
-        );
-      }
-
       if (
         registration_number &&
         existingBusiness.registration_number === registration_number
@@ -97,7 +91,6 @@ export class BusinessesService {
       const business = this.businessRepository.create({
         legal_name: createBusinessDto.legalName,
         display_name: createBusinessDto.displayName,
-        slug: createBusinessDto.slug,
 
         registration_number: createBusinessDto.registration_number,
 
@@ -211,11 +204,7 @@ export class BusinessesService {
      * Check uniqueness only when one of the unique identifiers
      * is being changed.
      */
-    await this.validateUniqueFields(
-      id,
-      updateBusinessDto.slug,
-      updateBusinessDto.registration_number,
-    );
+    await this.validateUniqueFields(id, updateBusinessDto.registration_number);
 
     /**
      * No logo change.
@@ -396,18 +385,9 @@ export class BusinessesService {
    */
   private async validateUniqueFields(
     businessId: string,
-    slug?: string,
     registration_number?: string,
   ): Promise<void> {
-    if (!slug && !registration_number) {
-      return;
-    }
-
     const conditions: FindOptionsWhere<Business>[] = [];
-
-    if (slug) {
-      conditions.push({ slug });
-    }
 
     if (registration_number) {
       conditions.push({ registration_number });
@@ -418,12 +398,6 @@ export class BusinessesService {
     });
 
     if (existingBusiness && existingBusiness.id !== businessId) {
-      if (slug && existingBusiness.slug === slug) {
-        throw new ConflictException(
-          `Business slug '${slug}' is already in use.`,
-        );
-      }
-
       if (
         registration_number &&
         existingBusiness.registration_number === registration_number

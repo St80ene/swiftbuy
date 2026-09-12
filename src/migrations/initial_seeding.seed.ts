@@ -2,31 +2,28 @@ import { randomUUID } from 'crypto';
 import { faker } from '@faker-js/faker';
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-import { Role } from '../../auth/entities/role.entity';
-import { Permission } from '../../auth/entities/permission.entity';
-import { UserAuth } from '../../auth/entities/user_auth.entity';
-import { User } from '../../resources/users/entities/user.entity';
+import { Role } from '../auth/entities/role.entity';
+import { Permission } from '../auth/entities/permission.entity';
+import { UserAuth } from '../auth/entities/user_auth.entity';
+import { User } from '../resources/users/entities/user.entity';
 
-import { UserRole } from '../../common/enum/user_role.enum';
-import {
-  AuditLogAction,
-  AuditLogEntity,
-} from '../../common/enum/audit_log.enum';
+import { UserRole } from '../common/enum/user_role.enum';
 
-import { passwordHasher } from '../../common/utils/helpers/password_hasher';
-import { BusinessIdRow } from '../../auth/interfaces/index.interface';
+import { passwordHasher } from '../common/utils/helpers/password_hasher';
+import { BusinessIdRow } from '../auth/interfaces/index.interface';
 
 import {
   ProductStatus,
   UomBaseName,
   UomDisplayName,
   UomType,
-} from '../../resources/products/entities/product.entity';
+} from '../resources/products/entities/product.entity';
 
 import {
   StockMovementDirection,
   StockMovementType,
-} from '../../resources/stock_movements/entities/stock_movement.entity';
+} from '../resources/stock_movements/entities/stock_movement.entity';
+import { AuditLogAction, AuditLogEntity } from '../common/enum/audit_log.enum';
 
 export class InitialSeeding1785451531000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -44,7 +41,6 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
           id,
           legal_name,
           display_name,
-          slug,
           registration_number,
           tax_identification_number,
           business_type,
@@ -62,19 +58,18 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
           locale,
           settings
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         businessId,
-        'SwiftBuy Technologies Ltd',
-        'SwiftBuy Inventory',
-        'swiftbuy-inventory',
+        'Udua-kiet Technologies Ltd',
+        'Udua-kiet Inventory',
         'RC-1234567',
         'TIN-98765432',
         'RETAIL',
-        'admin@swiftbuy.com',
+        'admin@uduakiet.com',
         '+2348012345678',
-        'https://swiftbuy.ng',
+        'https://uduakiet.ng',
         'Plot 123, Ozumba Mbadiwe Avenue',
         'Victoria Island',
         'Lagos',
@@ -252,11 +247,12 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
           INSERT INTO suppliers (
             id,
             name,
-            email
+            email,
+            business_id
           )
-          VALUES (?, ?, ?)
+          VALUES (?, ?, ?, ?)
         `,
-        [supplier.id, supplier.name, supplier.email],
+        [supplier.id, supplier.name, supplier.email, businessId],
       );
     }
 
@@ -682,7 +678,7 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
       store_id: mainStoreId,
       first_name: 'Etiene',
       last_name: 'Essenoh',
-      company_email: 'superadmin@swiftbuy.com',
+      company_email: 'superadmin@uduakiet.com',
       role_id: superAdminRole.id,
     });
 
@@ -822,9 +818,8 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
         entity_id: businessId,
         old_value: null,
         new_value: {
-          legal_name: 'SwiftBuy Technologies Ltd',
-          display_name: 'SwiftBuy Inventory',
-          slug: 'swiftbuy-inventory',
+          legal_name: 'Uduakiet Technologies Ltd',
+          display_name: 'Uduakiet Inventory',
           business_type: 'RETAIL',
           currency: 'NGN',
           timezone: 'Africa/Lagos',
@@ -1029,7 +1024,7 @@ export class InitialSeeding1785451531000 implements MigrationInterface {
           WHERE u.company_email = ?
           LIMIT 1
         `,
-      ['superadmin@swiftbuy.com'],
+      ['superadmin@uduakiet.com'],
     );
 
     const businesses = result as BusinessIdRow[];

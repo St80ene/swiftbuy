@@ -30,10 +30,6 @@ export class CreateBusinessDto {
   @MaxLength(255)
   displayName!: string;
 
-  @IsString()
-  @MaxLength(100)
-  slug!: string;
-
   @IsOptional()
   @IsString()
   @NormalizeString()
