@@ -7,14 +7,14 @@ import { StocksService } from './stock.service';
 
 import { StockPaginationQueryDto } from '../../common/dto/pagination-query.dto';
 
-@Controller('stock')
+@Controller('stocks')
 export class StocksController {
   constructor(private readonly stockService: StocksService) {}
 
   /**
    * Get paginated current stock balances.
    *
-   * GET /stock
+   * GET /stocks
    *
    * This returns CURRENT inventory balances.
    * It does not return the stock movement ledger.
@@ -30,7 +30,7 @@ export class StocksController {
   /**
    * Get a single current stock balance.
    *
-   * GET /stock/:id
+   * GET /stocks/:id
    */
   @Get(':id')
   findOne(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
@@ -40,7 +40,7 @@ export class StocksController {
   /**
    * Get inventory/warehouse metrics.
    *
-   * GET /stock/metrics
+   * GET /stocks/metrics
    */
   @Get('metrics')
   getWarehouseMetrics(@CurrentUser() user: AuthenticatedUser) {
