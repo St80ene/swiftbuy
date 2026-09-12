@@ -4,18 +4,12 @@ import {
   Table,
   TableForeignKey,
   TableIndex,
-  TableUnique,
 } from 'typeorm';
 
-import {
-  AuditLogAction,
-  AuditLogEntity,
-} from '../../common/enum/audit_log.enum';
+import { AuditLogAction, AuditLogEntity } from '../common/enum/audit_log.enum';
 
 export class InitialSchema1783699991545 implements MigrationInterface {
   name = 'InitialSchema1783699991545';
-
-  transaction = true;
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     /**
@@ -174,6 +168,14 @@ export class InitialSchema1783699991545 implements MigrationInterface {
      * ============================================================
      * STORES
      * ============================================================
+     *
+     * One business can have many stores.
+     *
+     * Unique:
+     *   business_id + code
+     *
+     * Non-unique:
+     *   business_id
      */
 
     await queryRunner.createTable(
@@ -264,11 +266,12 @@ export class InitialSchema1783699991545 implements MigrationInterface {
       }),
     );
 
-    await queryRunner.createUniqueConstraint(
+    await queryRunner.createIndex(
       'stores',
-      new TableUnique({
+      new TableIndex({
         name: 'UQ_stores_business_code',
         columnNames: ['business_id', 'code'],
+        isUnique: true,
       }),
     );
 
@@ -379,6 +382,12 @@ export class InitialSchema1783699991545 implements MigrationInterface {
         name: 'role_permissions',
         columns: [
           {
+            name: 'id',
+            type: 'varchar',
+            length: '36',
+            isPrimary: true,
+          },
+          {
             name: 'role_id',
             type: 'varchar',
             length: '36',
@@ -404,6 +413,14 @@ export class InitialSchema1783699991545 implements MigrationInterface {
         ],
       }),
       true,
+    );
+
+    await queryRunner.createIndex(
+      'role_permissions',
+      new TableIndex({
+        name: 'UQ_role_permissions_role_permission',
+        columnNames: ['role_id', 'permission_id'],
+      }),
     );
 
     await queryRunner.createForeignKeys('role_permissions', [
@@ -494,6 +511,7 @@ export class InitialSchema1783699991545 implements MigrationInterface {
             default: 'CURRENT_TIMESTAMP',
             onUpdate: 'CURRENT_TIMESTAMP',
           },
+          { name: 'deleted_at', type: 'datetime', isNullable: true },
         ],
       }),
       true,
@@ -526,11 +544,12 @@ export class InitialSchema1783699991545 implements MigrationInterface {
       }),
     ]);
 
-    await queryRunner.createUniqueConstraint(
+    await queryRunner.createIndex(
       'users',
-      new TableUnique({
+      new TableIndex({
         name: 'UQ_users_company_email',
         columnNames: ['business_id', 'company_email'],
+        isUnique: true,
       }),
     );
 
@@ -564,6 +583,7 @@ export class InitialSchema1783699991545 implements MigrationInterface {
             type: 'varchar',
             length: '36',
             isPrimary: true,
+            isUnique: true,
           },
           {
             name: 'password',
@@ -708,11 +728,12 @@ export class InitialSchema1783699991545 implements MigrationInterface {
       }),
     );
 
-    await queryRunner.createUniqueConstraint(
+    await queryRunner.createIndex(
       'categories',
-      new TableUnique({
+      new TableIndex({
         name: 'UQ_categories_business_name',
         columnNames: ['business_id', 'name'],
+        isUnique: true,
       }),
     );
 
@@ -730,7 +751,6 @@ export class InitialSchema1783699991545 implements MigrationInterface {
      * ============================================================
      *
      * Product = catalog definition.
-     *
      */
 
     await queryRunner.createTable(
@@ -768,7 +788,6 @@ export class InitialSchema1783699991545 implements MigrationInterface {
           {
             name: 'images',
             type: 'json',
-            default: "'[]'",
           },
           {
             name: 'uom_type',
@@ -922,11 +941,12 @@ export class InitialSchema1783699991545 implements MigrationInterface {
       }),
     );
 
-    await queryRunner.createUniqueConstraint(
+    await queryRunner.createIndex(
       'suppliers',
-      new TableUnique({
+      new TableIndex({
         name: 'UQ_suppliers_business_name',
         columnNames: ['business_id', 'name'],
+        isUnique: true,
       }),
     );
 
@@ -1006,11 +1026,12 @@ export class InitialSchema1783699991545 implements MigrationInterface {
       }),
     ]);
 
-    await queryRunner.createUniqueConstraint(
+    await queryRunner.createIndex(
       'product_sources',
-      new TableUnique({
+      new TableIndex({
         name: 'UQ_product_sources_product_supplier',
         columnNames: ['product_id', 'supplier_id'],
+        isUnique: true,
       }),
     );
 
@@ -1123,11 +1144,12 @@ export class InitialSchema1783699991545 implements MigrationInterface {
       }),
     ]);
 
-    await queryRunner.createUniqueConstraint(
+    await queryRunner.createIndex(
       'stocks',
-      new TableUnique({
+      new TableIndex({
         name: 'UQ_stocks_product_store',
         columnNames: ['product_id', 'store_id'],
+        isUnique: true,
       }),
     );
 
@@ -1412,11 +1434,12 @@ export class InitialSchema1783699991545 implements MigrationInterface {
       }),
     ]);
 
-    await queryRunner.createUniqueConstraint(
+    await queryRunner.createIndex(
       'purchase_orders',
-      new TableUnique({
+      new TableIndex({
         name: 'UQ_purchase_orders_store_po_number',
         columnNames: ['store_id', 'po_number'],
+        isUnique: true,
       }),
     );
 

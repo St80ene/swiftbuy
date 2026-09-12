@@ -104,7 +104,6 @@ export class UsersService {
         company_email: createUserDto.company_email,
         phone_number: createUserDto.phone_number,
         role_id: role.id,
-        is_active: true,
         ...(profileImage && {
           profile_image: profileImage,
         }),
@@ -313,12 +312,6 @@ export class UsersService {
       throw new ForbiddenException('A Super Admin cannot be deactivated.');
     }
 
-    if (!user.is_active) {
-      throw new ConflictException('User account is already deactivated.');
-    }
-
-    user.is_active = false;
-
     await this.userRepository.save(user);
 
     return successResponse('User deactivated successfully', null);
@@ -345,12 +338,6 @@ export class UsersService {
     if (user.id === currentUser.id) {
       throw new ForbiddenException('You cannot activate your own account.');
     }
-
-    if (user.is_active) {
-      throw new ConflictException('User account is already active.');
-    }
-
-    user.is_active = true;
 
     const updatedUser = await this.userRepository.save(user);
 

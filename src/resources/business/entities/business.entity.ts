@@ -17,6 +17,7 @@ import { Store } from '../../stores/entities/store.entity';
 import { CloudinaryImage } from '../../../common/utils/helpers/cloudinary/cloudinary.service';
 import { IsEnum } from 'class-validator';
 import { Stock } from '../../stocks/entities/stock.entity';
+import { Supplier } from '../../suppliers/entities/supplier.entity';
 
 export enum BusinessStatus {
   ACTIVE = 'ACTIVE',
@@ -53,13 +54,6 @@ export class Business extends BaseEntity {
     length: 255,
   })
   display_name!: string;
-
-  @Column({
-    type: 'varchar',
-    length: 100,
-    unique: true,
-  })
-  slug!: string;
 
   @Column({
     name: 'registration_number',
@@ -225,6 +219,9 @@ export class Business extends BaseEntity {
 
   @OneToMany(() => Category, (category) => category.business)
   categories!: Category[];
+
+  @OneToMany(() => Supplier, (supplier) => supplier.business)
+  suppliers!: Supplier[];
 
   @OneToMany(() => User, (user) => user.business)
   users!: User[];

@@ -59,12 +59,6 @@ export class User extends BaseEntity {
   })
   store_id!: string;
 
-  @Column({
-    type: 'boolean',
-    default: true,
-  })
-  is_active!: boolean;
-
   @CreateDateColumn({
     type: 'datetime',
     default: () => 'CURRENT_TIMESTAMP',

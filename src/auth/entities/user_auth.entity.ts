@@ -1,12 +1,9 @@
 import { Exclude } from 'class-transformer';
-import { PrimaryGeneratedColumn, Column, Entity } from 'typeorm';
+import { Column, Entity, PrimaryColumn } from 'typeorm';
 
 @Entity()
 export class UserAuth {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
-  @Column({ type: 'varchar', length: 36, unique: true })
+  @PrimaryColumn({ type: 'varchar', length: 36, unique: true })
   user_id?: string;
 
   @Column({
