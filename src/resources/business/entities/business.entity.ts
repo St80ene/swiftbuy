@@ -15,7 +15,6 @@ import { Product } from '../../products/entities/product.entity';
 import { AuditLog } from '../../audit_logs/entities/audit_log.entity';
 import { Store } from '../../stores/entities/store.entity';
 import { CloudinaryImage } from '../../../common/utils/helpers/cloudinary/cloudinary.service';
-import { IsEnum } from 'class-validator';
 import { Stock } from '../../stocks/entities/stock.entity';
 import { Supplier } from '../../suppliers/entities/supplier.entity';
 
@@ -206,12 +205,6 @@ export class Business extends BaseEntity {
   // ==========================================================
   // LIFECYCLE
   // ==========================================================
-  @IsEnum(BusinessStatus, {
-    message:
-      'Invalid status type. Must be one of: ACTIVE, SUSPENDED, ARCHIVED.',
-  })
-  @Column({ type: 'varchar', length: 20, default: BusinessStatus.ACTIVE })
-  status!: BusinessStatus;
 
   // ==========================================================
   // RELATIONSHIPS

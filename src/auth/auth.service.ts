@@ -50,11 +50,17 @@ export class AuthService {
 
     const { accessToken, refreshToken } = await this.generateTokens(user);
 
-    await this.auditLogService.create({
-      entity: AuditLogEntity.USER,
-      entityId: user.id,
-      action: AuditLogAction.LOGIN,
-    });
+    await this.auditLogService.create(
+      {
+        entity: AuditLogEntity.USER,
+        entityId: user.id,
+        action: AuditLogAction.LOGIN,
+      },
+      {
+        businessId: user.business_id,
+        storeId: user.store_id,
+      },
+    );
 
     return {
       user,

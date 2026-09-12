@@ -14,6 +14,7 @@ import {
   ApiResponse,
   successResponse,
 } from '../../common/utils/response.utils';
+import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 
 @Injectable()
 export class AuditLogsService {
@@ -22,8 +23,16 @@ export class AuditLogsService {
     private readonly auditLogRepository: Repository<AuditLog>,
   ) {}
 
-  async create(createAuditLogDto: CreateAuditLogDto): Promise<AuditLog> {
-    const auditLog = this.auditLogRepository.create(createAuditLogDto);
+  async create(
+    createAuditLogDto: CreateAuditLogDto,
+    user?: Partial<AuthenticatedUser>,
+  ): Promise<AuditLog> {
+    const payload = {
+      ...createAuditLogDto,
+      business_id: user?.businessId,
+      store_id: user?.storeId,
+    };
+    const auditLog = this.auditLogRepository.create(payload);
 
     return await this.auditLogRepository.save(auditLog);
   }
