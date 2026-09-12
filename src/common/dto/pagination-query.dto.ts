@@ -178,3 +178,24 @@ export class StockPaginationQueryDto extends BasePaginationQueryDto {
 
   [key: string]: unknown;
 }
+
+export const USER_SORT_FIELDS: Record<string, string> = {
+  created_at: 'user.created_at',
+  updated_at: 'user.updated_at',
+  email: 'user.email',
+  first_name: 'user.first_name',
+  last_name: 'user.last_name',
+} as const;
+export const USER_SORT_FIELD_NAMES = Object.keys(USER_SORT_FIELDS);
+export type UserSortField = (typeof USER_SORT_FIELD_NAMES)[number];
+export class UserPaginationQueryDto extends BasePaginationQueryDto {
+  @IsOptional()
+  @IsIn(Object.keys(USER_SORT_FIELDS))
+  sortBy?: UserSortField = 'created_at';
+
+  @IsOptional()
+  @IsIn(['ASC', 'DESC'])
+  order?: 'ASC' | 'DESC' = 'DESC';
+
+  [key: string]: unknown;
+}

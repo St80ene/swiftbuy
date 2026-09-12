@@ -24,6 +24,11 @@ import {
   CloudinaryImage,
   CloudinaryService,
 } from '../../common/utils/helpers/cloudinary/cloudinary.service';
+import {
+  USER_SORT_FIELDS,
+  UserPaginationQueryDto,
+} from '../../common/dto/pagination-query.dto';
+import { getPaginationOptions } from '../../common/utils/helpers/get_pagination_options.util';
 
 @Injectable()
 export class UsersService {
@@ -147,7 +152,10 @@ export class UsersService {
   /**
    * Get paginated users.
    */
-  async findAll({ page, limit }: { page?: number; limit?: number }): Promise<
+  async findAll(
+    user: AuthenticatedUser,
+    paginationQuery: UserPaginationQueryDto,
+  ): Promise<
     ApiResponse<{
       users: User[];
       meta: {
@@ -161,18 +169,47 @@ export class UsersService {
       };
     }>
   > {
-    const pageNumber = Math.max(1, Number(page) || 1);
-    const limitNumber = Math.max(1, Number(limit) || 10);
-
-    const skip = (pageNumber - 1) * limitNumber;
-
-    const [users, totalItems] = await this.userRepository.findAndCount({
-      take: limitNumber,
+    const {
+      page: pageNumber,
+      limit: limitNumber,
       skip,
-      order: {
-        created_at: 'DESC',
-      },
+    } = getPaginationOptions(paginationQuery);
+
+    const { search, order = 'DESC', sortBy = 'updated_at' } = paginationQuery;
+
+    const sortColumn = USER_SORT_FIELDS[sortBy] ?? USER_SORT_FIELDS.updated_at;
+    const sortOrder: 'ASC' | 'DESC' =
+      order?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+    const queryBuilder = this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.role', 'role')
+      .leftJoinAndSelect('user.business', 'business')
+      .leftJoinAndSelect('user.store', 'store')
+      .where('user.deleted_at IS NULL');
+
+    if (search) {
+      queryBuilder.andWhere(
+        `
+        (
+          LOWER(user.first_name) LIKE LOWER(:search) OR (LOWER(user.last_name) LIKE LOWER(:search)) OR (LOWER(user.company_email) LIKE LOWER(:search))
+        )
+        `,
+        { search: `%${search}%` },
+      );
+    }
+
+    queryBuilder.andWhere('user.business_id = :businessId', {
+      businessId: user.businessId,
     });
+
+    queryBuilder.orWhere('user.store_id = :storeId', {
+      storeId: paginationQuery.store_id,
+    });
+
+    queryBuilder.orderBy(sortColumn, sortOrder).take(limitNumber).skip(skip);
+
+    const [users, totalItems] = await queryBuilder.getManyAndCount();
 
     const totalPages = Math.ceil(totalItems / limitNumber);
 
