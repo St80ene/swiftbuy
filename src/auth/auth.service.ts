@@ -50,11 +50,17 @@ export class AuthService {
 
     const { accessToken, refreshToken } = await this.generateTokens(user);
 
-    await this.auditLogService.create({
-      entity: AuditLogEntity.USER,
-      entityId: user.id,
-      action: AuditLogAction.LOGIN,
-    });
+    await this.auditLogService.create(
+      {
+        entity: AuditLogEntity.USER,
+        entityId: user.id,
+        action: AuditLogAction.LOGIN,
+      },
+      {
+        businessId: user.business_id,
+        storeId: user.store_id,
+      },
+    );
 
     return {
       user,
@@ -134,7 +140,6 @@ export class AuthService {
         password_reset_token: dto.token,
       },
       select: {
-        id: true,
         user_id: true,
         password: true,
         password_reset_token: true,
@@ -187,7 +192,6 @@ export class AuthService {
         user_id: userId,
       },
       select: {
-        id: true,
         user_id: true,
         password: true,
       },
@@ -265,7 +269,7 @@ export class AuthService {
       },
     });
 
-    if (!user || !user.is_active) {
+    if (!user) {
       throw new UnauthorizedException('User is not active');
     }
 
@@ -285,7 +289,6 @@ export class AuthService {
         role_id: true,
         business_id: true,
         store_id: true,
-        is_active: true,
       },
     });
 

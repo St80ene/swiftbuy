@@ -46,8 +46,8 @@ export class AuditLog extends BaseEntity {
   @Column({ name: 'metadata', type: 'json', nullable: true })
   metadata?: Record<string, any> | null;
 
-  @Column({ type: 'char', length: 36, nullable: true })
-  business_id?: string;
+  @Column({ type: 'char', length: 36, nullable: false })
+  business_id!: string;
 
   @Column({ type: 'char', length: 36, nullable: true })
   store_id?: string;
